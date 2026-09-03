@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://diplomatic-contentment-production-e4ce.up.railway.app/sitemap.xml
