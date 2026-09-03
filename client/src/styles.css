@@ -1963,3 +1963,20 @@ textarea.form-control {
         padding: 12px;
     }
 }
+
+.navbar-logout-btn {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #ef4444;
+    font-weight: 700;
+}
+
+.navbar-logout-btn:hover {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+}
+
+.navbar-logout-btn:active {
+    background: #b91c1c;
+}

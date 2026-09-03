@@ -5,12 +5,15 @@ import {
 
 import {
     NavLink,
+    useNavigate,
 } from "react-router-dom";
 
 import API_URL from "../config/api";
 
 function Navbar() {
-    const [open, setOpen] =
+    const navigate = useNavigate();
+
+    const [menuOpen, setMenuOpen] =
         useState(false);
 
     const user = useMemo(() => {
@@ -25,45 +28,36 @@ function Navbar() {
         }
     }, []);
 
-    const handleLogout = async () => {
-        try {
-            await fetch(
-                `${API_URL}/api/auth/logout`,
-                {
-                    method: "POST",
-                    credentials:
-                        "include",
-                }
-            );
-        } catch (error) {
-            console.error(
-                "Logout error:",
-                error
-            );
-        } finally {
-            localStorage.removeItem(
-                "user"
-            );
+    const handleLogout =
+        async () => {
+            try {
+                await fetch(
+                    `${API_URL}/api/auth/logout`,
+                    {
+                        method: "POST",
+                        credentials:
+                            "include",
+                    }
+                );
+            } catch (error) {
+                console.error(
+                    "Logout error:",
+                    error
+                );
+            } finally {
+                localStorage.removeItem(
+                    "user"
+                );
 
-            window.location.href =
-                "/auth";
-        }
+                navigate("/", {
+                    replace: true,
+                });
+            }
+        };
+
+    const closeMenu = () => {
+        setMenuOpen(false);
     };
-
-    const navStyle = ({
-        isActive,
-    }) => ({
-        padding: "9px 11px",
-        borderRadius: "10px",
-        fontSize: ".92rem",
-        fontWeight: 600,
-        color: isActive
-            ? "#111827"
-            : "#6b7280",
-        background: isActive
-            ? "#f3f4f6"
-            : "transparent",
-    });
 
     return (
         <header className="navbar">
@@ -71,6 +65,9 @@ function Navbar() {
                 <NavLink
                     to="/dashboard"
                     className="navbar-brand"
+                    onClick={
+                        closeMenu
+                    }
                 >
                     Lost & Found
                 </NavLink>
@@ -79,36 +76,42 @@ function Navbar() {
                     type="button"
                     className="mobile-menu-button"
                     onClick={() =>
-                        setOpen(
-                            (value) =>
-                                !value
+                        setMenuOpen(
+                            (current) =>
+                                !current
                         )
+                    }
+                    aria-label="Toggle navigation menu"
+                    aria-expanded={
+                        menuOpen
                     }
                 >
                     ☰
                 </button>
 
                 <div
-                    className={
-                        open
-                            ? "navbar-content navbar-open"
-                            : "navbar-content"
-                    }
+                    className={`navbar-content ${
+                        menuOpen
+                            ? "navbar-open"
+                            : ""
+                    }`}
                 >
                     <nav className="navbar-links">
                         <NavLink
                             to="/dashboard"
-                            style={
-                                navStyle
+                            className="btn btn-ghost"
+                            onClick={
+                                closeMenu
                             }
                         >
-                            Explore
+                            Dashboard
                         </NavLink>
 
                         <NavLink
                             to="/my-items"
-                            style={
-                                navStyle
+                            className="btn btn-ghost"
+                            onClick={
+                                closeMenu
                             }
                         >
                             My Items
@@ -116,26 +119,29 @@ function Navbar() {
 
                         <NavLink
                             to="/my-claims"
-                            style={
-                                navStyle
+                            className="btn btn-ghost"
+                            onClick={
+                                closeMenu
                             }
                         >
                             My Claims
                         </NavLink>
 
                         <NavLink
-                            to="/claims"
-                            style={
-                                navStyle
+                            to="/claims-received"
+                            className="btn btn-ghost"
+                            onClick={
+                                closeMenu
                             }
                         >
-                            Claims
+                            Claims Received
                         </NavLink>
 
                         <NavLink
                             to="/profile"
-                            style={
-                                navStyle
+                            className="btn btn-ghost"
+                            onClick={
+                                closeMenu
                             }
                         >
                             Profile
@@ -145,8 +151,9 @@ function Navbar() {
                             "ADMIN" && (
                             <NavLink
                                 to="/admin"
-                                style={
-                                    navStyle
+                                className="btn btn-ghost"
+                                onClick={
+                                    closeMenu
                                 }
                             >
                                 Admin
@@ -158,13 +165,16 @@ function Navbar() {
                         <NavLink
                             to="/report"
                             className="btn btn-primary"
+                            onClick={
+                                closeMenu
+                            }
                         >
                             Report Item
                         </NavLink>
 
                         <button
                             type="button"
-                            className="btn btn-ghost"
+                            className="btn navbar-logout-btn"
                             onClick={
                                 handleLogout
                             }
