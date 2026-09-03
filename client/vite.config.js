@@ -10,5 +10,21 @@ export default defineConfig({
         allowedHosts: [
             "diplomatic-contentment-production-e4ce.up.railway.app",
         ],
+
+        proxy: {
+            "/api": {
+                target:
+                    "https://lost-and-found-portal-production-215b.up.railway.app",
+                changeOrigin: true,
+                secure: true,
+            },
+
+            "/uploads": {
+                target:
+                    "https://lost-and-found-portal-production-215b.up.railway.app",
+                changeOrigin: true,
+                secure: true,
+            },
+        },
     },
 });

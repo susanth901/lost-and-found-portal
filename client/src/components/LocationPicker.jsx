@@ -1,67 +1,138 @@
-import { useEffect, useState } from "react";
+import {
+    useEffect,
+    useState,
+} from "react";
+
 import {
     MapContainer,
     Marker,
     TileLayer,
-    useMap,
     useMapEvents,
 } from "react-leaflet";
 
-import L from "leaflet";
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
+const DEFAULT_LAT = 12.8231;
+const DEFAULT_LNG = 80.0442;
 
-delete L.Icon.Default.prototype._getIconUrl;
+function MapClickHandler({
+    onLocationSelect,
+}) {
+    useMapEvents({
+        click(event) {
+            const {
+                lat,
+                lng,
+            } = event.latlng;
 
-L.Icon.Default.mergeOptions({
-    iconRetinaUrl: markerIcon2x,
-    iconUrl: markerIcon,
-    shadowUrl: markerShadow,
-});
-
-function MapController({ latitude, longitude }) {
-    const map = useMap();
-
-    useEffect(() => {
-        if (
-            latitude !== "" &&
-            longitude !== ""
-        ) {
-            map.setView(
-                [
-                    Number(latitude),
-                    Number(longitude),
-                ],
-                16
+            onLocationSelect(
+                lat,
+                lng
             );
-        }
-    }, [
-        latitude,
-        longitude,
-        map,
-    ]);
+        },
+    });
 
     return null;
 }
 
-function ClickHandler({
-    onLocationChange,
-    onLocationNameChange,
+function LocationPicker({
+    value,
+    onChange,
 }) {
-    useMapEvents({
-        async click(e) {
-            const lat =
-                e.latlng.lat;
+    const [search, setSearch] =
+        useState(
+            value?.locationName ||
+                ""
+        );
 
-            const lng =
-                e.latlng.lng;
-
-            onLocationChange(
-                lat,
-                lng
+    const [latitude, setLatitude] =
+        useState(() => {
+            const lat = Number(
+                value?.latitude
             );
 
+            return Number.isFinite(
+                lat
+            )
+                ? lat
+                : DEFAULT_LAT;
+        });
+
+    const [
+        longitude,
+        setLongitude,
+    ] = useState(() => {
+        const lng = Number(
+            value?.longitude
+        );
+
+        return Number.isFinite(
+                lng
+            )
+                ? lng
+                : DEFAULT_LNG;
+        });
+
+    const [
+        hasSelectedLocation,
+        setHasSelectedLocation,
+    ] = useState(
+        Number.isFinite(
+            Number(
+                value?.latitude
+            )
+        ) &&
+            Number.isFinite(
+                Number(
+                    value?.longitude
+                )
+            )
+    );
+
+    const [
+        searching,
+        setSearching,
+    ] = useState(false);
+
+    const [error, setError] =
+        useState("");
+
+    useEffect(() => {
+        const lat = Number(
+            value?.latitude
+        );
+
+        const lng = Number(
+            value?.longitude
+        );
+
+        if (
+            Number.isFinite(lat) &&
+            Number.isFinite(lng)
+        ) {
+            setLatitude(lat);
+            setLongitude(lng);
+
+            setHasSelectedLocation(
+                true
+            );
+        }
+
+        if (
+            value?.locationName !==
+            undefined
+        ) {
+            setSearch(
+                value.locationName ||
+                    ""
+            );
+        }
+    }, [
+        value?.latitude,
+        value?.longitude,
+        value?.locationName,
+    ]);
+
+    const reverseGeocode =
+        async (lat, lng) => {
             try {
                 const response =
                     await fetch(
@@ -71,118 +142,212 @@ function ClickHandler({
                 const data =
                     await response.json();
 
-                if (
-                    data.display_name
-                ) {
-                    onLocationNameChange(
-                        data.display_name
+                return (
+                    data.display_name ||
+                    `${lat.toFixed(
+                        6
+                    )}, ${lng.toFixed(
+                        6
+                    )}`
+                );
+            } catch {
+                return `${lat.toFixed(
+                    6
+                )}, ${lng.toFixed(
+                    6
+                )}`;
+            }
+        };
+
+    const selectLocation =
+        async (lat, lng) => {
+            if (
+                !Number.isFinite(
+                    Number(lat)
+                ) ||
+                !Number.isFinite(
+                    Number(lng)
+                )
+            ) {
+                return;
+            }
+
+            const validLat =
+                Number(lat);
+
+            const validLng =
+                Number(lng);
+
+            setLatitude(
+                validLat
+            );
+
+            setLongitude(
+                validLng
+            );
+
+            setHasSelectedLocation(
+                true
+            );
+
+            const name =
+                await reverseGeocode(
+                    validLat,
+                    validLng
+                );
+
+            setSearch(name);
+
+            onChange?.({
+                locationName:
+                    name,
+                latitude:
+                    validLat,
+                longitude:
+                    validLng,
+            });
+        };
+
+    const handleSearch =
+        async (event) => {
+            event.preventDefault();
+
+            if (!search.trim()) {
+                setError(
+                    "Enter a location to search."
+                );
+
+                return;
+            }
+
+            try {
+                setSearching(
+                    true
+                );
+
+                setError("");
+
+                const response =
+                    await fetch(
+                        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(
+                            search.trim()
+                        )}`
                     );
+
+                const data =
+                    await response.json();
+
+                if (
+                    !Array.isArray(
+                        data
+                    ) ||
+                    data.length ===
+                        0
+                ) {
+                    setError(
+                        "Location not found."
+                    );
+
+                    return;
                 }
+
+                const lat =
+                    Number(
+                        data[0].lat
+                    );
+
+                const lng =
+                    Number(
+                        data[0].lon
+                    );
+
+                if (
+                    !Number.isFinite(
+                        lat
+                    ) ||
+                    !Number.isFinite(
+                        lng
+                    )
+                ) {
+                    setError(
+                        "Invalid location returned."
+                    );
+
+                    return;
+                }
+
+                setLatitude(
+                    lat
+                );
+
+                setLongitude(
+                    lng
+                );
+
+                setHasSelectedLocation(
+                    true
+                );
+
+                const name =
+                    data[0]
+                        .display_name ||
+                    search.trim();
+
+                setSearch(name);
+
+                onChange?.({
+                    locationName:
+                        name,
+                    latitude: lat,
+                    longitude: lng,
+                });
             } catch (error) {
                 console.error(
-                    "Reverse geocoding failed:",
+                    "Location search error:",
                     error
                 );
+
+                setError(
+                    "Unable to search location."
+                );
+            } finally {
+                setSearching(
+                    false
+                );
             }
-        },
-    });
+        };
 
-    return null;
-}
+    const useCurrentLocation =
+        () => {
+            if (
+                !navigator.geolocation
+            ) {
+                setError(
+                    "Location services are not supported by this browser."
+                );
 
-function LocationPicker({
-    latitude,
-    longitude,
-    onLocationChange,
-    onLocationNameChange,
-}) {
-    const [search, setSearch] =
-        useState("");
+                return;
+            }
 
-    const [searching, setSearching] =
-        useState(false);
-
-    const [error, setError] =
-        useState("");
-
-    const defaultPosition = [
-        12.8231,
-        80.0442,
-    ];
-
-    const position =
-        latitude !== "" &&
-        longitude !== ""
-            ? [
-                  Number(latitude),
-                  Number(longitude),
-              ]
-            : defaultPosition;
-
-    const handleSearch = async (
-        e
-    ) => {
-        e.preventDefault();
-
-        if (!search.trim()) {
-            return;
-        }
-
-        try {
-            setSearching(true);
             setError("");
 
-            const response =
-                await fetch(
-                    `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
-                        search.trim()
-                    )}&limit=5`
-                );
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    selectLocation(
+                        position.coords
+                            .latitude,
+                        position.coords
+                            .longitude
+                    );
+                },
 
-            const data =
-                await response.json();
-
-            if (
-                !Array.isArray(
-                    data
-                ) ||
-                data.length === 0
-            ) {
-                throw new Error(
-                    "Location not found"
-                );
-            }
-
-            const result =
-                data[0];
-
-            const lat =
-                Number(
-                    result.lat
-                );
-
-            const lng =
-                Number(
-                    result.lon
-                );
-
-            onLocationChange(
-                lat,
-                lng
+                () => {
+                    setError(
+                        "Unable to access your current location."
+                    );
+                }
             );
-
-            onLocationNameChange(
-                result.display_name ||
-                    search.trim()
-            );
-        } catch (error) {
-            setError(
-                error.message
-            );
-        } finally {
-            setSearching(false);
-        }
-    };
+        };
 
     return (
         <div>
@@ -191,23 +356,31 @@ function LocationPicker({
                     handleSearch
                 }
                 style={{
-                    display:
-                        "flex",
-                    gap: "10px",
+                    display: "flex",
+                    gap: "8px",
                     marginBottom:
-                        "12px",
+                        "10px",
+                    flexWrap:
+                        "wrap",
                 }}
             >
                 <input
                     type="text"
                     className="form-control"
                     value={search}
-                    onChange={(e) =>
+                    placeholder="Search location..."
+                    onChange={(
+                        event
+                    ) =>
                         setSearch(
-                            e.target.value
+                            event
+                                .target
+                                .value
                         )
                     }
-                    placeholder="Search a location..."
+                    style={{
+                        flex: 1,
+                    }}
                 />
 
                 <button
@@ -221,94 +394,100 @@ function LocationPicker({
                         ? "Searching..."
                         : "Search"}
                 </button>
+
+                <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={
+                        useCurrentLocation
+                    }
+                >
+                    Use Current
+                    Location
+                </button>
             </form>
 
             {error && (
-                <div className="alert alert-error">
+                <div
+                    className="alert alert-error"
+                    style={{
+                        marginBottom:
+                            "10px",
+                    }}
+                >
                     {error}
                 </div>
             )}
 
-            <p
-                className="muted"
-                style={{
-                    margin:
-                        "0 0 10px",
-                    fontSize:
-                        "0.86rem",
-                }}
-            >
-                Search for a place or
-                click directly on the
-                map to select a
-                location.
-            </p>
-
             <div
                 style={{
-                    border:
-                        "1px solid #e5e7eb",
+                    height:
+                        "320px",
                     borderRadius:
-                        "14px",
+                        "12px",
                     overflow:
                         "hidden",
+                    border:
+                        "1px solid #e5e7eb",
                 }}
             >
                 <MapContainer
-                    center={
-                        position
-                    }
+                    center={[
+                        latitude,
+                        longitude,
+                    ]}
                     zoom={
-                        latitude !== ""
+                        hasSelectedLocation
                             ? 16
                             : 14
                     }
                     style={{
+                        height:
+                            "100%",
                         width:
                             "100%",
-                        height:
-                            "340px",
                     }}
+                    key={`${latitude}-${longitude}`}
                 >
                     <TileLayer
-                        attribution='&copy; OpenStreetMap contributors'
+                        attribution="&copy; OpenStreetMap contributors"
                         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     />
 
-                    <MapController
-                        latitude={
-                            latitude
-                        }
-                        longitude={
-                            longitude
+                    <MapClickHandler
+                        onLocationSelect={
+                            selectLocation
                         }
                     />
 
-                    <ClickHandler
-                        onLocationChange={
-                            onLocationChange
-                        }
-                        onLocationNameChange={
-                            onLocationNameChange
-                        }
-                    />
-
-                    {latitude !== "" &&
-                        longitude !==
-                            "" && (
-                            <Marker
-                                position={[
-                                    Number(
-                                        latitude
-                                    ),
-                                    Number(
-                                        longitude
-                                    ),
-                                ]}
-                            />
-                        )}
+                    {hasSelectedLocation && (
+                        <Marker
+                            position={[
+                                latitude,
+                                longitude,
+                            ]}
+                        />
+                    )}
                 </MapContainer>
             </div>
+
+            {hasSelectedLocation && (
+                <p
+                    style={{
+                        marginTop:
+                            "8px",
+                        fontSize:
+                            "0.85rem",
+                        color:
+                            "#6b7280",
+                    }}
+                >
+                    Click anywhere on
+                    the map to change
+                    the selected
+                    location.
+                </p>
+            )}
         </div>
     );
 }
