@@ -1,6 +1,18 @@
 const multer = require("multer");
 const path = require("path");
 const crypto = require("crypto");
+const fs = require("fs");
+
+const uploadDirectory = path.join(
+    __dirname,
+    "../../uploads"
+);
+
+if (!fs.existsSync(uploadDirectory)) {
+    fs.mkdirSync(uploadDirectory, {
+        recursive: true,
+    });
+}
 
 const storage = multer.diskStorage({
     destination: (
@@ -8,13 +20,7 @@ const storage = multer.diskStorage({
         file,
         cb
     ) => {
-        cb(
-            null,
-            path.join(
-                __dirname,
-                "../../uploads"
-            )
-        );
+        cb(null, uploadDirectory);
     },
 
     filename: (
@@ -30,10 +36,7 @@ const storage = multer.diskStorage({
         const filename =
             `${Date.now()}-${crypto.randomUUID()}${extension}`;
 
-        cb(
-            null,
-            filename
-        );
+        cb(null, filename);
     },
 });
 
@@ -53,15 +56,12 @@ const fileFilter = (
             file.mimetype
         )
     ) {
-        return cb(
-            null,
-            true
-        );
+        return cb(null, true);
     }
 
     return cb(
         new Error(
-            "INVALID_FILE_TYPE"
+            "Only JPEG, PNG and WEBP images are allowed"
         ),
         false
     );
