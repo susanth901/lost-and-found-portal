@@ -27,8 +27,10 @@ function App() {
     const [user, setUser] =
         useState(null);
 
-    const [authLoading, setAuthLoading] =
-        useState(true);
+    const [
+        authLoading,
+        setAuthLoading,
+    ] = useState(true);
 
     useEffect(() => {
         const checkAuthentication =
@@ -61,7 +63,9 @@ function App() {
                         data.data ||
                         null;
 
-                    setUser(loggedInUser);
+                    setUser(
+                        loggedInUser
+                    );
 
                     if (loggedInUser) {
                         localStorage.setItem(
@@ -83,7 +87,9 @@ function App() {
 
                     setUser(null);
                 } finally {
-                    setAuthLoading(false);
+                    setAuthLoading(
+                        false
+                    );
                 }
             };
 
@@ -94,9 +100,11 @@ function App() {
         return (
             <div
                 style={{
-                    minHeight: "100vh",
+                    minHeight:
+                        "100vh",
                     display: "flex",
-                    alignItems: "center",
+                    alignItems:
+                        "center",
                     justifyContent:
                         "center",
                 }}
@@ -208,7 +216,7 @@ function App() {
                 />
 
                 <Route
-                    path="/claims"
+                    path="/claims-received"
                     element={
                         user ? (
                             <ClaimsReceived />
