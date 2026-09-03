@@ -11,7 +11,7 @@ const {
 
 const {
     upload,
-} = require("../middleware/upload");
+} = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
 
