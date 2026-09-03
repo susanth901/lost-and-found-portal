@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import {
+    useNavigate,
+    useParams,
+} from "react-router-dom";
 
 import Navbar from "../components/Navbar";
+import API_URL from "../config/api";
 
 function EditItem() {
     const { id } = useParams();
     const navigate = useNavigate();
 
-    const [formData, setFormData] = useState({
+    const [form, setForm] = useState({
         categoryId: "",
         type: "LOST",
         title: "",
@@ -16,114 +20,285 @@ function EditItem() {
         latitude: "",
         longitude: "",
         dateOccurred: "",
-        contactPreference: "IN_APP",
         status: "ACTIVE",
+        contactPreference: "IN_APP",
     });
 
-    const [images, setImages] = useState([]);
-    const [newImages, setNewImages] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState("");
+    const [categories, setCategories] =
+        useState([]);
 
-    const categories = [
-        { id: 1, name: "Electronics" },
-        { id: 2, name: "Wallets & Bags" },
-        { id: 3, name: "ID Cards & Documents" },
-        { id: 4, name: "Keys" },
-        { id: 5, name: "Clothing" },
-        { id: 6, name: "Books" },
-        { id: 7, name: "Accessories" },
-        { id: 8, name: "Other" },
-    ];
+    const [images, setImages] =
+        useState([]);
 
-    const fetchItem = async () => {
-        try {
-            setLoading(true);
-            setError("");
+    const [newImages, setNewImages] =
+        useState([]);
 
-            const response = await fetch(
-                `http://localhost:5000/api/items/${id}`,
-                {
-                    credentials: "include",
-                }
-            );
+    const [loading, setLoading] =
+        useState(true);
 
-            const data = await response.json();
+    const [saving, setSaving] =
+        useState(false);
 
-            if (!response.ok) {
-                throw new Error(
-                    data.message || "Failed to load item"
-                );
-            }
+    const [error, setError] =
+        useState("");
 
-            const item = data.data;
+    const getImageUrl = (image) => {
+        if (!image) return "";
 
-            setFormData({
-                categoryId: String(item.category_id || ""),
-                type: item.type || "LOST",
-                title: item.title || "",
-                description: item.description || "",
-                locationName: item.location_name || "",
-                latitude: item.latitude ?? "",
-                longitude: item.longitude ?? "",
-                dateOccurred: item.date_occurred
-                    ? item.date_occurred.slice(0, 10)
-                    : "",
-                contactPreference:
-                    item.contact_preference || "IN_APP",
-                status: item.status || "ACTIVE",
-            });
-
-            setImages(item.images || []);
-        } catch (error) {
-            setError(error.message);
-        } finally {
-            setLoading(false);
+        if (
+            image.startsWith("http://") ||
+            image.startsWith("https://")
+        ) {
+            return image;
         }
+
+        return `${API_URL}${image}`;
     };
 
     useEffect(() => {
-        fetchItem();
+        const loadPage = async () => {
+            try {
+                setLoading(true);
+
+                const [
+                    itemResponse,
+                    categoryResponse,
+                ] = await Promise.all([
+                    fetch(
+                        `${API_URL}/api/items/${id}`,
+                        {
+                            credentials:
+                                "include",
+                        }
+                    ),
+
+                    fetch(
+                        `${API_URL}/api/categories`,
+                        {
+                            credentials:
+                                "include",
+                        }
+                    ),
+                ]);
+
+                const itemData =
+                    await itemResponse.json();
+
+                const categoryData =
+                    await categoryResponse.json();
+
+                if (!itemResponse.ok) {
+                    throw new Error(
+                        itemData.message ||
+                            "Unable to load item"
+                    );
+                }
+
+                const item =
+                    itemData.data?.item ||
+                    itemData.item ||
+                    itemData.data ||
+                    itemData;
+
+                setForm({
+                    categoryId:
+                        item.category_id ||
+                        item.categoryId ||
+                        "",
+                    type:
+                        item.type ||
+                        "LOST",
+                    title:
+                        item.title ||
+                        "",
+                    description:
+                        item.description ||
+                        "",
+                    locationName:
+                        item.location_name ||
+                        item.locationName ||
+                        "",
+                    latitude:
+                        item.latitude ??
+                        "",
+                    longitude:
+                        item.longitude ??
+                        "",
+                    dateOccurred:
+                        item.date_occurred
+                            ? String(
+                                  item.date_occurred
+                              ).slice(0, 10)
+                            : "",
+                    status:
+                        item.status ||
+                        "ACTIVE",
+                    contactPreference:
+                        item.contact_preference ||
+                        "IN_APP",
+                });
+
+                setImages(
+                    item.images ||
+                        itemData.images ||
+                        itemData.data
+                            ?.images ||
+                        []
+                );
+
+                const categoryList =
+                    Array.isArray(
+                        categoryData
+                    )
+                        ? categoryData
+                        : categoryData.data ||
+                          categoryData.categories ||
+                          [];
+
+                setCategories(
+                    Array.isArray(
+                        categoryList
+                    )
+                        ? categoryList
+                        : []
+                );
+            } catch (error) {
+                setError(error.message);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        loadPage();
     }, [id]);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
+    const updateField = (
+        event
+    ) => {
+        const {
+            name,
+            value,
+        } = event.target;
 
-        setFormData((current) => ({
+        setForm((current) => ({
             ...current,
             [name]: value,
         }));
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const handleSubmit = async (
+        event
+    ) => {
+        event.preventDefault();
 
         try {
             setSaving(true);
             setError("");
 
-            const response = await fetch(
-                `http://localhost:5000/api/items/${id}`,
-                {
-                    method: "PATCH",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                    body: JSON.stringify(formData),
-                }
-            );
+            const response =
+                await fetch(
+                    `${API_URL}/api/items/${id}`,
+                    {
+                        method: "PATCH",
 
-            const data = await response.json();
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+                        },
+
+                        credentials:
+                            "include",
+
+                        body: JSON.stringify(
+                            {
+                                categoryId:
+                                    Number(
+                                        form.categoryId
+                                    ),
+                                type:
+                                    form.type,
+                                title:
+                                    form.title,
+                                description:
+                                    form.description,
+                                locationName:
+                                    form.locationName,
+                                latitude:
+                                    form.latitude
+                                        ? Number(
+                                              form.latitude
+                                          )
+                                        : null,
+                                longitude:
+                                    form.longitude
+                                        ? Number(
+                                              form.longitude
+                                          )
+                                        : null,
+                                dateOccurred:
+                                    form.dateOccurred,
+                                status:
+                                    form.status,
+                                contactPreference:
+                                    form.contactPreference,
+                            }
+                        ),
+                    }
+                );
+
+            const data =
+                await response.json();
 
             if (!response.ok) {
                 throw new Error(
-                    data.message || "Failed to update item"
+                    data.message ||
+                        "Unable to update item"
                 );
             }
 
-            navigate(`/items/${id}`);
+            if (
+                newImages.length >
+                0
+            ) {
+                const imageData =
+                    new FormData();
+
+                newImages.forEach(
+                    (file) => {
+                        imageData.append(
+                            "images",
+                            file
+                        );
+                    }
+                );
+
+                const imageResponse =
+                    await fetch(
+                        `${API_URL}/api/items/${id}/images`,
+                        {
+                            method: "POST",
+                            credentials:
+                                "include",
+                            body: imageData,
+                        }
+                    );
+
+                const imageResult =
+                    await imageResponse.json();
+
+                if (
+                    !imageResponse.ok
+                ) {
+                    throw new Error(
+                        imageResult.message ||
+                            "Item updated, but images could not be uploaded"
+                    );
+                }
+            }
+
+            navigate(
+                `/items/${id}`
+            );
         } catch (error) {
             setError(error.message);
         } finally {
@@ -131,94 +306,42 @@ function EditItem() {
         }
     };
 
-    const handleNewImages = (e) => {
-        const selected = Array.from(e.target.files || []);
-
-        if (images.length + selected.length > 5) {
-            setError(
-                `You can only upload ${
-                    5 - images.length
-                } more image(s)`
+    const deleteImage = async (
+        imageId
+    ) => {
+        const confirmed =
+            window.confirm(
+                "Delete this image?"
             );
-            return;
-        }
 
-        setNewImages(selected);
-        setError("");
-    };
-
-    const handleAddImages = async () => {
-        if (newImages.length === 0) {
-            return;
-        }
+        if (!confirmed) return;
 
         try {
-            setSaving(true);
-            setError("");
-
-            const uploadData = new FormData();
-
-            newImages.forEach((image) => {
-                uploadData.append("images", image);
-            });
-
-            const response = await fetch(
-                `http://localhost:5000/api/items/${id}/images`,
-                {
-                    method: "POST",
-                    credentials: "include",
-                    body: uploadData,
-                }
-            );
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(
-                    data.message || "Failed to upload images"
+            const response =
+                await fetch(
+                    `${API_URL}/api/items/images/${imageId}`,
+                    {
+                        method: "DELETE",
+                        credentials:
+                            "include",
+                    }
                 );
-            }
 
-            setImages((current) => [
-                ...current,
-                ...(data.data || []),
-            ]);
-
-            setNewImages([]);
-        } catch (error) {
-            setError(error.message);
-        } finally {
-            setSaving(false);
-        }
-    };
-
-    const handleDeleteImage = async (imageId) => {
-        if (!window.confirm("Delete this image?")) {
-            return;
-        }
-
-        try {
-            setError("");
-
-            const response = await fetch(
-                `http://localhost:5000/api/items/images/${imageId}`,
-                {
-                    method: "DELETE",
-                    credentials: "include",
-                }
-            );
-
-            const data = await response.json();
+            const data =
+                await response.json();
 
             if (!response.ok) {
                 throw new Error(
-                    data.message || "Failed to delete image"
+                    data.message ||
+                        "Unable to delete image"
                 );
             }
 
             setImages((current) =>
                 current.filter(
-                    (image) => image.id !== imageId
+                    (image) =>
+                        image.id !==
+                        imageId
                 )
             );
         } catch (error) {
@@ -228,36 +351,27 @@ function EditItem() {
 
     if (loading) {
         return (
-            <>
+            <div className="page">
                 <Navbar />
 
                 <main className="page-shell">
-                    <div className="empty-state">
-                        Loading item...
-                    </div>
+                    Loading item...
                 </main>
-            </>
+            </div>
         );
     }
 
     return (
-        <>
+        <div className="page">
             <Navbar />
 
-            <main
-                className="page-shell"
-                style={{
-                    maxWidth: "850px",
-                }}
-            >
+            <main className="page-shell">
                 <div className="page-header">
-                    <h1 className="page-title">
-                        Edit Item
-                    </h1>
+                    <h1>Edit Item</h1>
 
-                    <p className="page-subtitle">
-                        Update details, status, and images for
-                        this report.
+                    <p>
+                        Update the details of your
+                        report.
                     </p>
                 </div>
 
@@ -268,273 +382,262 @@ function EditItem() {
                 )}
 
                 <form
+                    className="card card-body"
                     onSubmit={handleSubmit}
-                    className="card"
                 >
-                    <div className="card-body">
-                        <div className="grid grid-2">
-                            <div className="form-group">
-                                <label className="form-label">
-                                    Category
-                                </label>
+                    <div className="form-group">
+                        <label className="form-label">
+                            Title
+                        </label>
 
-                                <select
-                                    className="form-control"
-                                    name="categoryId"
-                                    value={
-                                        formData.categoryId
-                                    }
-                                    onChange={handleChange}
-                                >
-                                    {categories.map(
-                                        (category) => (
-                                            <option
-                                                key={category.id}
-                                                value={category.id}
-                                            >
-                                                {category.name}
-                                            </option>
-                                        )
-                                    )}
-                                </select>
-                            </div>
+                        <input
+                            name="title"
+                            className="form-control"
+                            value={form.title}
+                            onChange={updateField}
+                            required
+                        />
+                    </div>
 
-                            <div className="form-group">
-                                <label className="form-label">
-                                    Type
-                                </label>
+                    <div className="form-group">
+                        <label className="form-label">
+                            Description
+                        </label>
 
-                                <select
-                                    className="form-control"
-                                    name="type"
-                                    value={formData.type}
-                                    onChange={handleChange}
-                                >
-                                    <option value="LOST">
-                                        Lost
-                                    </option>
+                        <textarea
+                            name="description"
+                            className="form-control"
+                            value={
+                                form.description
+                            }
+                            onChange={updateField}
+                            required
+                        />
+                    </div>
 
-                                    <option value="FOUND">
-                                        Found
-                                    </option>
-                                </select>
-                            </div>
+                    <div
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns:
+                                "repeat(2, minmax(0, 1fr))",
+                            gap: "14px",
+                        }}
+                    >
+                        <div className="form-group">
+                            <label className="form-label">
+                                Type
+                            </label>
+
+                            <select
+                                name="type"
+                                className="form-control"
+                                value={form.type}
+                                onChange={
+                                    updateField
+                                }
+                            >
+                                <option value="LOST">
+                                    Lost
+                                </option>
+
+                                <option value="FOUND">
+                                    Found
+                                </option>
+                            </select>
                         </div>
 
                         <div className="form-group">
                             <label className="form-label">
-                                Title
+                                Category
+                            </label>
+
+                            <select
+                                name="categoryId"
+                                className="form-control"
+                                value={
+                                    form.categoryId
+                                }
+                                onChange={
+                                    updateField
+                                }
+                            >
+                                {categories.map(
+                                    (
+                                        category
+                                    ) => (
+                                        <option
+                                            key={
+                                                category.id
+                                            }
+                                            value={
+                                                category.id
+                                            }
+                                        >
+                                            {
+                                                category.name
+                                            }
+                                        </option>
+                                    )
+                                )}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">
+                            Location
+                        </label>
+
+                        <input
+                            name="locationName"
+                            className="form-control"
+                            value={
+                                form.locationName
+                            }
+                            onChange={updateField}
+                        />
+                    </div>
+
+                    <div
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns:
+                                "repeat(2, minmax(0, 1fr))",
+                            gap: "14px",
+                        }}
+                    >
+                        <div className="form-group">
+                            <label className="form-label">
+                                Latitude
                             </label>
 
                             <input
+                                name="latitude"
+                                type="number"
+                                step="any"
                                 className="form-control"
-                                name="title"
-                                value={formData.title}
-                                onChange={handleChange}
-                                required
+                                value={
+                                    form.latitude
+                                }
+                                onChange={
+                                    updateField
+                                }
                             />
                         </div>
 
                         <div className="form-group">
                             <label className="form-label">
-                                Description
+                                Longitude
                             </label>
 
-                            <textarea
+                            <input
+                                name="longitude"
+                                type="number"
+                                step="any"
                                 className="form-control"
-                                name="description"
-                                value={formData.description}
-                                onChange={handleChange}
-                                rows={6}
-                                required
+                                value={
+                                    form.longitude
+                                }
+                                onChange={
+                                    updateField
+                                }
+                            />
+                        </div>
+                    </div>
+
+                    <div
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns:
+                                "repeat(2, minmax(0, 1fr))",
+                            gap: "14px",
+                        }}
+                    >
+                        <div className="form-group">
+                            <label className="form-label">
+                                Date
+                            </label>
+
+                            <input
+                                name="dateOccurred"
+                                type="date"
+                                className="form-control"
+                                value={
+                                    form.dateOccurred
+                                }
+                                onChange={
+                                    updateField
+                                }
                             />
                         </div>
 
-                        <div className="grid grid-2">
-                            <div className="form-group">
-                                <label className="form-label">
-                                    Location
-                                </label>
+                        <div className="form-group">
+                            <label className="form-label">
+                                Status
+                            </label>
 
-                                <input
-                                    className="form-control"
-                                    name="locationName"
-                                    value={
-                                        formData.locationName
-                                    }
-                                    onChange={handleChange}
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label">
-                                    Date
-                                </label>
-
-                                <input
-                                    className="form-control"
-                                    type="date"
-                                    name="dateOccurred"
-                                    value={
-                                        formData.dateOccurred
-                                    }
-                                    onChange={handleChange}
-                                    max={
-                                        new Date()
-                                            .toISOString()
-                                            .split("T")[0]
-                                    }
-                                />
-                            </div>
-                        </div>
-
-                        <div className="grid grid-2">
-                            <div className="form-group">
-                                <label className="form-label">
-                                    Contact Preference
-                                </label>
-
-                                <select
-                                    className="form-control"
-                                    name="contactPreference"
-                                    value={
-                                        formData.contactPreference
-                                    }
-                                    onChange={handleChange}
-                                >
-                                    <option value="IN_APP">
-                                        In App
-                                    </option>
-
-                                    <option value="EMAIL">
-                                        Email
-                                    </option>
-                                </select>
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label">
-                                    Status
-                                </label>
-
-                                <select
-                                    className="form-control"
-                                    name="status"
-                                    value={
-                                        formData.status
-                                    }
-                                    onChange={handleChange}
-                                >
-                                    <option value="ACTIVE">
-                                        Active
-                                    </option>
-
-                                    <option value="CLAIMED">
-                                        Claimed
-                                    </option>
-
-                                    <option value="RESOLVED">
-                                        Resolved
-                                    </option>
-
-                                    <option value="CLOSED">
-                                        Closed
-                                    </option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <div
-                            style={{
-                                display: "flex",
-                                justifyContent: "flex-end",
-                                marginTop: "8px",
-                            }}
-                        >
-                            <button
-                                type="submit"
-                                className="btn btn-primary"
-                                disabled={saving}
+                            <select
+                                name="status"
+                                className="form-control"
+                                value={
+                                    form.status
+                                }
+                                onChange={
+                                    updateField
+                                }
                             >
-                                {saving
-                                    ? "Saving..."
-                                    : "Save Changes"}
-                            </button>
+                                <option value="ACTIVE">
+                                    Active
+                                </option>
+
+                                <option value="CLAIMED">
+                                    Claimed
+                                </option>
+
+                                <option value="RESOLVED">
+                                    Resolved
+                                </option>
+
+                                <option value="CLOSED">
+                                    Closed
+                                </option>
+                            </select>
                         </div>
                     </div>
-                </form>
 
-                <div
-                    className="card"
-                    style={{
-                        marginTop: "24px",
-                    }}
-                >
-                    <div className="card-body">
-                        <h2
-                            className="section-title"
-                            style={{
-                                fontSize: "1.2rem",
-                            }}
-                        >
-                            Images
-                        </h2>
+                    {images.length >
+                        0 && (
+                        <div className="form-group">
+                            <label className="form-label">
+                                Current Images
+                            </label>
 
-                        <p className="muted">
-                            Maximum 5 images per item.
-                        </p>
-
-                        {images.length === 0 ? (
-                            <div className="empty-state">
-                                No images uploaded.
-                            </div>
-                        ) : (
-                            <div
-                                style={{
-                                    display: "grid",
-                                    gridTemplateColumns:
-                                        "repeat(auto-fit, minmax(150px, 1fr))",
-                                    gap: "14px",
-                                    marginTop: "18px",
-                                }}
-                            >
-                                {images.map((image) => (
-                                    <div
-                                        key={image.id}
-                                        style={{
-                                            border:
-                                                "1px solid #e5e7eb",
-                                            borderRadius: "14px",
-                                            overflow: "hidden",
-                                            background:
-                                                "#ffffff",
-                                        }}
-                                    >
-                                        <img
-                                            src={`http://localhost:5000${image.image_url}`}
-                                            alt="Item"
-                                            style={{
-                                                width: "100%",
-                                                height: "145px",
-                                                objectFit:
-                                                    "cover",
-                                            }}
-                                        />
-
+                            <div className="gallery">
+                                {images.map(
+                                    (image) => (
                                         <div
-                                            style={{
-                                                padding: "10px",
-                                            }}
+                                            key={
+                                                image.id
+                                            }
                                         >
+                                            <img
+                                                src={getImageUrl(
+                                                    image.image_url
+                                                )}
+                                                alt=""
+                                            />
+
                                             <button
                                                 type="button"
                                                 className="btn btn-danger"
                                                 style={{
+                                                    marginTop:
+                                                        "6px",
                                                     width:
                                                         "100%",
                                                 }}
                                                 onClick={() =>
-                                                    handleDeleteImage(
+                                                    deleteImage(
                                                         image.id
                                                     )
                                                 }
@@ -542,59 +645,66 @@ function EditItem() {
                                                 Delete
                                             </button>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-
-                        {images.length < 5 && (
-                            <>
-                                <div className="divider" />
-
-                                <div className="form-group">
-                                    <label className="form-label">
-                                        Add more images
-                                    </label>
-
-                                    <input
-                                        className="form-control"
-                                        type="file"
-                                        accept="image/jpeg,image/png,image/webp"
-                                        multiple
-                                        onChange={
-                                            handleNewImages
-                                        }
-                                    />
-                                </div>
-
-                                {newImages.length > 0 && (
-                                    <p className="muted">
-                                        {
-                                            newImages.length
-                                        }{" "}
-                                        new image(s) selected
-                                    </p>
+                                    )
                                 )}
+                            </div>
+                        </div>
+                    )}
 
-                                <button
-                                    type="button"
-                                    className="btn btn-secondary"
-                                    onClick={handleAddImages}
-                                    disabled={
-                                        saving ||
-                                        newImages.length === 0
-                                    }
-                                >
-                                    {saving
-                                        ? "Uploading..."
-                                        : "Upload Images"}
-                                </button>
-                            </>
-                        )}
+                    <div className="form-group">
+                        <label className="form-label">
+                            Add Images
+                        </label>
+
+                        <input
+                            className="form-control"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            multiple
+                            onChange={(event) =>
+                                setNewImages(
+                                    Array.from(
+                                        event.target
+                                            .files
+                                    ).slice(
+                                        0,
+                                        5
+                                    )
+                                )
+                            }
+                        />
                     </div>
-                </div>
+
+                    <div
+                        style={{
+                            display: "flex",
+                            gap: "10px",
+                        }}
+                    >
+                        <button
+                            className="btn btn-primary"
+                            disabled={saving}
+                        >
+                            {saving
+                                ? "Saving..."
+                                : "Save Changes"}
+                        </button>
+
+                        <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() =>
+                                navigate(
+                                    `/items/${id}`
+                                )
+                            }
+                        >
+                            Cancel
+                        </button>
+                    </div>
+                </form>
             </main>
-        </>
+        </div>
     );
 }
 

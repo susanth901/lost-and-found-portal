@@ -1,22 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+    useEffect,
+    useMemo,
+    useState,
+} from "react";
+
 import { Link } from "react-router-dom";
 
 import Navbar from "../components/Navbar";
+import API_URL from "../config/api";
 
 function AdminDashboard() {
-    const [stats, setStats] = useState({
-        totalUsers: 0,
-        activeUsers: 0,
-        totalItems: 0,
-        activeItems: 0,
-        totalClaims: 0,
-        pendingClaims: 0,
-    });
+    const [stats, setStats] =
+        useState({
+            totalUsers: 0,
+            activeUsers: 0,
+            totalItems: 0,
+            activeItems: 0,
+            totalClaims: 0,
+            pendingClaims: 0,
+        });
 
-    const [users, setUsers] = useState([]);
-    const [items, setItems] = useState([]);
+    const [users, setUsers] =
+        useState([]);
 
-    const [tab, setTab] = useState("users");
+    const [items, setItems] =
+        useState([]);
+
+    const [tab, setTab] =
+        useState("users");
 
     const [loading, setLoading] =
         useState(true);
@@ -24,340 +35,296 @@ function AdminDashboard() {
     const [error, setError] =
         useState("");
 
-    const currentUser = useMemo(() => {
-        try {
-            const storedUser =
-                localStorage.getItem("user");
+    const currentUser = useMemo(
+        () => {
+            try {
+                return JSON.parse(
+                    localStorage.getItem(
+                        "user"
+                    ) || "null"
+                );
+            } catch {
+                return null;
+            }
+        },
+        []
+    );
 
-            return storedUser
-                ? JSON.parse(storedUser)
-                : null;
-        } catch {
-            return null;
-        }
-    }, []);
-
-    const API = "http://localhost:5000";
-
-    const getImageUrl = (image) => {
-        if (!image) {
-            return null;
-        }
+    const getImageUrl = (
+        image
+    ) => {
+        if (!image) return null;
 
         if (
-            image.startsWith("http://") ||
-            image.startsWith("https://")
+            image.startsWith(
+                "http://"
+            ) ||
+            image.startsWith(
+                "https://"
+            )
         ) {
             return image;
         }
 
-        return `${API}${image}`;
+        return `${API_URL}${image}`;
     };
 
-    const loadAdminData = async () => {
-        try {
-            setLoading(true);
-            setError("");
+    const loadAdminData =
+        async () => {
+            try {
+                setLoading(true);
+                setError("");
 
-            const [
-                statsResponse,
-                usersResponse,
-                itemsResponse,
-            ] = await Promise.all([
-                fetch(
-                    `${API}/api/admin/stats`,
-                    {
-                        credentials:
-                            "include",
-                    }
-                ),
+                const [
+                    statsResponse,
+                    usersResponse,
+                    itemsResponse,
+                ] =
+                    await Promise.all(
+                        [
+                            fetch(
+                                `${API_URL}/api/admin/stats`,
+                                {
+                                    credentials:
+                                        "include",
+                                }
+                            ),
 
-                fetch(
-                    `${API}/api/admin/users`,
-                    {
-                        credentials:
-                            "include",
-                    }
-                ),
+                            fetch(
+                                `${API_URL}/api/admin/users`,
+                                {
+                                    credentials:
+                                        "include",
+                                }
+                            ),
 
-                fetch(
-                    `${API}/api/admin/items`,
-                    {
-                        credentials:
-                            "include",
-                    }
-                ),
-            ]);
+                            fetch(
+                                `${API_URL}/api/admin/items`,
+                                {
+                                    credentials:
+                                        "include",
+                                }
+                            ),
+                        ]
+                    );
 
-            const statsData =
-                await statsResponse.json();
+                const statsData =
+                    await statsResponse.json();
 
-            const usersData =
-                await usersResponse.json();
+                const usersData =
+                    await usersResponse.json();
 
-            const itemsData =
-                await itemsResponse.json();
+                const itemsData =
+                    await itemsResponse.json();
 
-            if (!statsResponse.ok) {
-                throw new Error(
-                    statsData.message ||
-                        "Unable to load admin statistics"
-                );
-            }
+                if (
+                    !statsResponse.ok
+                ) {
+                    throw new Error(
+                        statsData.message ||
+                            "Unable to load statistics"
+                    );
+                }
 
-            if (!usersResponse.ok) {
-                throw new Error(
-                    usersData.message ||
-                        "Unable to load users"
-                );
-            }
+                if (
+                    !usersResponse.ok
+                ) {
+                    throw new Error(
+                        usersData.message ||
+                            "Unable to load users"
+                    );
+                }
 
-            if (!itemsResponse.ok) {
-                throw new Error(
-                    itemsData.message ||
-                        "Unable to load items"
-                );
-            }
+                if (
+                    !itemsResponse.ok
+                ) {
+                    throw new Error(
+                        itemsData.message ||
+                            "Unable to load items"
+                    );
+                }
 
-            const statsResult =
-                statsData.data ||
-                statsData.stats ||
-                statsData;
+                const result =
+                    statsData.data ||
+                    statsData.stats ||
+                    statsData;
 
-            setStats({
-                totalUsers: Number(
-                    statsResult.totalUsers ??
-                        statsResult.total_users ??
-                        0
-                ),
+                setStats({
+                    totalUsers:
+                        Number(
+                            result.totalUsers ??
+                                result.total_users ??
+                                0
+                        ),
 
-                activeUsers: Number(
-                    statsResult.activeUsers ??
-                        statsResult.active_users ??
-                        0
-                ),
+                    activeUsers:
+                        Number(
+                            result.activeUsers ??
+                                result.active_users ??
+                                0
+                        ),
 
-                totalItems: Number(
-                    statsResult.totalItems ??
-                        statsResult.total_items ??
-                        0
-                ),
+                    totalItems:
+                        Number(
+                            result.totalItems ??
+                                result.total_items ??
+                                0
+                        ),
 
-                activeItems: Number(
-                    statsResult.activeItems ??
-                        statsResult.active_items ??
-                        0
-                ),
+                    activeItems:
+                        Number(
+                            result.activeItems ??
+                                result.active_items ??
+                                0
+                        ),
 
-                totalClaims: Number(
-                    statsResult.totalClaims ??
-                        statsResult.total_claims ??
-                        0
-                ),
+                    totalClaims:
+                        Number(
+                            result.totalClaims ??
+                                result.total_claims ??
+                                0
+                        ),
 
-                pendingClaims: Number(
-                    statsResult.pendingClaims ??
-                        statsResult.pending_claims ??
-                        0
-                ),
-            });
+                    pendingClaims:
+                        Number(
+                            result.pendingClaims ??
+                                result.pending_claims ??
+                                0
+                        ),
+                });
 
-            if (
-                Array.isArray(
-                    usersData.data
-                )
-            ) {
-                setUsers(usersData.data);
-            } else if (
-                Array.isArray(
-                    usersData.users
-                )
-            ) {
+                const userList =
+                    Array.isArray(
+                        usersData
+                    )
+                        ? usersData
+                        : usersData.data ||
+                          usersData.users ||
+                          [];
+
                 setUsers(
-                    usersData.users
+                    Array.isArray(
+                        userList
+                    )
+                        ? userList
+                        : []
                 );
-            } else {
-                setUsers([]);
-            }
 
-            if (
-                Array.isArray(
-                    itemsData.data
-                )
-            ) {
-                setItems(itemsData.data);
-            } else if (
-                Array.isArray(
-                    itemsData.items
-                )
-            ) {
+                const itemList =
+                    Array.isArray(
+                        itemsData
+                    )
+                        ? itemsData
+                        : itemsData.data ||
+                          itemsData.items ||
+                          [];
+
                 setItems(
-                    itemsData.items
+                    Array.isArray(
+                        itemList
+                    )
+                        ? itemList
+                        : []
                 );
-            } else {
-                setItems([]);
+            } catch (error) {
+                setError(
+                    error.message
+                );
+            } finally {
+                setLoading(false);
             }
-        } catch (error) {
-            console.error(
-                "Admin dashboard error:",
-                error
-            );
-
-            setError(error.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+        };
 
     useEffect(() => {
         loadAdminData();
     }, []);
 
-    const handleUserStatus = async (
-        userId,
-        newStatus
-    ) => {
-        try {
-            setError("");
+    const handleUserStatus =
+        async (
+            userId,
+            isActive
+        ) => {
+            try {
+                const response =
+                    await fetch(
+                        `${API_URL}/api/admin/users/${userId}/status`,
+                        {
+                            method:
+                                "PATCH",
 
-            const response = await fetch(
-                `${API}/api/admin/users/${userId}/status`,
-                {
-                    method: "PATCH",
+                            headers: {
+                                "Content-Type":
+                                    "application/json",
+                            },
 
-                    headers: {
-                        "Content-Type":
-                            "application/json",
-                    },
+                            credentials:
+                                "include",
 
-                    credentials: "include",
+                            body: JSON.stringify(
+                                {
+                                    isActive,
+                                }
+                            ),
+                        }
+                    );
 
-                    body: JSON.stringify({
-                        isActive:
-                            newStatus,
-                    }),
+                const data =
+                    await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message ||
+                            "Unable to update user"
+                    );
                 }
-            );
 
-            const data =
-                await response.json();
-
-            if (!response.ok) {
-                throw new Error(
-                    data.message ||
-                        "Unable to update user"
+                await loadAdminData();
+            } catch (error) {
+                setError(
+                    error.message
                 );
             }
+        };
 
-            setUsers(
-                (currentUsers) =>
-                    currentUsers.map(
-                        (user) =>
-                            user.id ===
-                            userId
-                                ? {
-                                      ...user,
-                                      is_active:
-                                          newStatus,
-                                  }
-                                : user
-                    )
-            );
+    const handleDeleteItem =
+        async (itemId) => {
+            const confirmed =
+                window.confirm(
+                    "Delete this item permanently?"
+                );
 
-            setStats(
-                (currentStats) => ({
-                    ...currentStats,
+            if (!confirmed)
+                return;
 
-                    activeUsers:
-                        newStatus
-                            ? currentStats.activeUsers +
-                              1
-                            : Math.max(
-                                  0,
-                                  currentStats.activeUsers -
-                                      1
-                              ),
-                })
-            );
-        } catch (error) {
-            setError(error.message);
-        }
-    };
+            try {
+                const response =
+                    await fetch(
+                        `${API_URL}/api/admin/items/${itemId}`,
+                        {
+                            method:
+                                "DELETE",
+                            credentials:
+                                "include",
+                        }
+                    );
 
-    const handleDeleteItem = async (
-        itemId
-    ) => {
-        const confirmed =
-            window.confirm(
-                "Delete this item permanently?"
-            );
+                const data =
+                    await response.json();
 
-        if (!confirmed) {
-            return;
-        }
-
-        try {
-            setError("");
-
-            const response = await fetch(
-                `${API}/api/admin/items/${itemId}`,
-                {
-                    method: "DELETE",
-                    credentials: "include",
+                if (!response.ok) {
+                    throw new Error(
+                        data.message ||
+                            "Unable to delete item"
+                    );
                 }
-            );
 
-            const data =
-                await response.json();
-
-            if (!response.ok) {
-                throw new Error(
-                    data.message ||
-                        "Unable to delete item"
+                await loadAdminData();
+            } catch (error) {
+                setError(
+                    error.message
                 );
             }
-
-            const deletedItem =
-                items.find(
-                    (item) =>
-                        item.id === itemId
-                );
-
-            setItems(
-                (currentItems) =>
-                    currentItems.filter(
-                        (item) =>
-                            item.id !==
-                            itemId
-                    )
-            );
-
-            setStats(
-                (currentStats) => ({
-                    ...currentStats,
-
-                    totalItems:
-                        Math.max(
-                            0,
-                            currentStats.totalItems -
-                                1
-                        ),
-
-                    activeItems:
-                        deletedItem?.status ===
-                        "ACTIVE"
-                            ? Math.max(
-                                  0,
-                                  currentStats.activeItems -
-                                      1
-                              )
-                            : currentStats.activeItems,
-                })
-            );
-        } catch (error) {
-            setError(error.message);
-        }
-    };
+        };
 
     if (loading) {
         return (
@@ -365,10 +332,8 @@ function AdminDashboard() {
                 <Navbar />
 
                 <main className="page-shell">
-                    <div className="admin-loading">
-                        Loading admin
-                        dashboard...
-                    </div>
+                    Loading admin
+                    dashboard...
                 </main>
             </div>
         );
@@ -385,8 +350,9 @@ function AdminDashboard() {
                     </h1>
 
                     <p>
-                        Manage users, reports,
-                        and platform activity.
+                        Manage users,
+                        reports, and
+                        platform activity.
                     </p>
                 </div>
 
@@ -403,7 +369,9 @@ function AdminDashboard() {
                         </span>
 
                         <strong className="admin-stat-value">
-                            {stats.totalUsers}
+                            {
+                                stats.totalUsers
+                            }
                         </strong>
 
                         <span className="admin-stat-subtext">
@@ -420,7 +388,9 @@ function AdminDashboard() {
                         </span>
 
                         <strong className="admin-stat-value">
-                            {stats.totalItems}
+                            {
+                                stats.totalItems
+                            }
                         </strong>
 
                         <span className="admin-stat-subtext">
@@ -437,7 +407,9 @@ function AdminDashboard() {
                         </span>
 
                         <strong className="admin-stat-value">
-                            {stats.totalClaims}
+                            {
+                                stats.totalClaims
+                            }
                         </strong>
 
                         <span className="admin-stat-subtext">
@@ -453,12 +425,15 @@ function AdminDashboard() {
                     <button
                         type="button"
                         className={
-                            tab === "users"
+                            tab ===
+                            "users"
                                 ? "admin-tab admin-tab-active"
                                 : "admin-tab"
                         }
                         onClick={() =>
-                            setTab("users")
+                            setTab(
+                                "users"
+                            )
                         }
                     >
                         Users
@@ -467,19 +442,23 @@ function AdminDashboard() {
                     <button
                         type="button"
                         className={
-                            tab === "items"
+                            tab ===
+                            "items"
                                 ? "admin-tab admin-tab-active"
                                 : "admin-tab"
                         }
                         onClick={() =>
-                            setTab("items")
+                            setTab(
+                                "items"
+                            )
                         }
                     >
                         Items
                     </button>
                 </div>
 
-                {tab === "users" && (
+                {tab ===
+                    "users" && (
                     <section className="card admin-table-card">
                         <div className="admin-table-wrapper">
                             <table className="admin-table">
@@ -488,19 +467,15 @@ function AdminDashboard() {
                                         <th>
                                             User
                                         </th>
-
                                         <th>
                                             Role
                                         </th>
-
                                         <th>
                                             Status
                                         </th>
-
                                         <th>
                                             Joined
                                         </th>
-
                                         <th>
                                             Action
                                         </th>
@@ -534,11 +509,9 @@ function AdminDashboard() {
                                                 </td>
 
                                                 <td>
-                                                    <span className="admin-role">
-                                                        {
-                                                            user.role
-                                                        }
-                                                    </span>
+                                                    {
+                                                        user.role
+                                                    }
                                                 </td>
 
                                                 <td>
@@ -600,139 +573,120 @@ function AdminDashboard() {
                     </section>
                 )}
 
-                {tab === "items" && (
-                    <>
-                        {items.length ===
-                        0 ? (
-                            <div className="empty-state">
-                                <h3>
-                                    No items
-                                </h3>
+                {tab ===
+                    "items" && (
+                    <div className="admin-items-grid">
+                        {items.map(
+                            (item) => {
+                                const image =
+                                    getImageUrl(
+                                        item.primary_image ||
+                                            item.primary_image_url ||
+                                            item.image_url
+                                    );
 
-                                <p>
-                                    No reports
-                                    are currently
-                                    available.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="admin-items-grid">
-                                {items.map(
-                                    (
-                                        item
-                                    ) => {
-                                        const image =
-                                            getImageUrl(
-                                                item.primary_image ||
-                                                    item.primary_image_url ||
-                                                    item.image_url
-                                            );
-
-                                        return (
-                                            <article
-                                                className="admin-item-card"
-                                                key={
-                                                    item.id
+                                return (
+                                    <article
+                                        key={
+                                            item.id
+                                        }
+                                        className="admin-item-card"
+                                    >
+                                        {image ? (
+                                            <img
+                                                src={
+                                                    image
                                                 }
-                                            >
-                                                {image ? (
-                                                    <img
-                                                        src={
-                                                            image
+                                                alt={
+                                                    item.title
+                                                }
+                                                className="admin-item-image"
+                                            />
+                                        ) : (
+                                            <div className="admin-item-no-image">
+                                                No image
+                                            </div>
+                                        )}
+
+                                        <div className="admin-item-body">
+                                            <div className="admin-item-top">
+                                                <span
+                                                    className={`badge ${
+                                                        item.type ===
+                                                        "FOUND"
+                                                            ? "badge-found"
+                                                            : "badge-lost"
+                                                    }`}
+                                                >
+                                                    {
+                                                        item.type
+                                                    }
+                                                </span>
+
+                                                <span
+                                                    className={`badge badge-${item.status?.toLowerCase()}`}
+                                                >
+                                                    {
+                                                        item.status
+                                                    }
+                                                </span>
+                                            </div>
+
+                                            <h3>
+                                                {
+                                                    item.title
+                                                }
+                                            </h3>
+
+                                            <p className="admin-item-description">
+                                                {
+                                                    item.description
+                                                }
+                                            </p>
+
+                                            <div className="admin-item-meta">
+                                                <span>
+                                                    {item.location_name ||
+                                                        "No location"}
+                                                </span>
+
+                                                {item.user_name && (
+                                                    <span>
+                                                        Reported
+                                                        by{" "}
+                                                        {
+                                                            item.user_name
                                                         }
-                                                        alt={
-                                                            item.title
-                                                        }
-                                                        className="admin-item-image"
-                                                    />
-                                                ) : (
-                                                    <div className="admin-item-no-image">
-                                                        No
-                                                        image
-                                                    </div>
+                                                    </span>
                                                 )}
+                                            </div>
 
-                                                <div className="admin-item-body">
-                                                    <div className="admin-item-top">
-                                                        <span
-                                                            className={`badge ${
-                                                                item.type ===
-                                                                "FOUND"
-                                                                    ? "badge-found"
-                                                                    : "badge-lost"
-                                                            }`}
-                                                        >
-                                                            {
-                                                                item.type
-                                                            }
-                                                        </span>
+                                            <div className="admin-item-actions">
+                                                <Link
+                                                    to={`/items/${item.id}`}
+                                                    className="btn btn-secondary"
+                                                >
+                                                    View
+                                                </Link>
 
-                                                        <span
-                                                            className={`badge badge-${item.status?.toLowerCase()}`}
-                                                        >
-                                                            {
-                                                                item.status
-                                                            }
-                                                        </span>
-                                                    </div>
-
-                                                    <h3>
-                                                        {
-                                                            item.title
-                                                        }
-                                                    </h3>
-
-                                                    <p className="admin-item-description">
-                                                        {
-                                                            item.description
-                                                        }
-                                                    </p>
-
-                                                    <div className="admin-item-meta">
-                                                        <span>
-                                                            {item.location_name ||
-                                                                "No location"}
-                                                        </span>
-
-                                                        {item.user_name && (
-                                                            <span>
-                                                                Reported
-                                                                by{" "}
-                                                                {
-                                                                    item.user_name
-                                                                }
-                                                            </span>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="admin-item-actions">
-                                                        <Link
-                                                            to={`/items/${item.id}`}
-                                                            className="btn btn-secondary"
-                                                        >
-                                                            View
-                                                        </Link>
-
-                                                        <button
-                                                            type="button"
-                                                            className="btn btn-danger"
-                                                            onClick={() =>
-                                                                handleDeleteItem(
-                                                                    item.id
-                                                                )
-                                                            }
-                                                        >
-                                                            Delete
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </article>
-                                        );
-                                    }
-                                )}
-                            </div>
+                                                <button
+                                                    type="button"
+                                                    className="btn btn-danger"
+                                                    onClick={() =>
+                                                        handleDeleteItem(
+                                                            item.id
+                                                        )
+                                                    }
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </article>
+                                );
+                            }
                         )}
-                    </>
+                    </div>
                 )}
             </main>
         </div>

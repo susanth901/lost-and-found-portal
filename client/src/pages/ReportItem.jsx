@@ -1,201 +1,211 @@
-import { useState } from "react";
-import {
-    useNavigate,
-    useSearchParams,
-} from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import Navbar from "../components/Navbar";
 import LocationPicker from "../components/LocationPicker";
+import API_URL from "../config/api";
 
 function ReportItem() {
-    const navigate =
-        useNavigate();
+    const navigate = useNavigate();
 
-    const [searchParams] =
-        useSearchParams();
-
-    const initialType =
-        searchParams.get(
-            "type"
-        ) === "FOUND"
-            ? "FOUND"
-            : "LOST";
-
-    const [
-        categoryId,
-        setCategoryId,
-    ] = useState("1");
-
-    const [type, setType] =
-        useState(initialType);
-
-    const [title, setTitle] =
-        useState("");
-
-    const [
-        description,
-        setDescription,
-    ] = useState("");
-
-    const [
-        locationName,
-        setLocationName,
-    ] = useState("");
-
-    const [
-        latitude,
-        setLatitude,
-    ] = useState("");
-
-    const [
-        longitude,
-        setLongitude,
-    ] = useState("");
-
-    const [
-        dateOccurred,
-        setDateOccurred,
-    ] = useState("");
-
-    const [
-        contactPreference,
-        setContactPreference,
-    ] = useState("IN_APP");
-
-    const [images, setImages] =
+    const [categories, setCategories] =
         useState([]);
 
-    const [error, setError] =
-        useState("");
+    const [form, setForm] =
+        useState({
+            categoryId: "",
+            type: "LOST",
+            title: "",
+            description: "",
+            locationName: "",
+            latitude: "",
+            longitude: "",
+            dateOccurred: "",
+            contactPreference:
+                "IN_APP",
+        });
+
+    const [files, setFiles] =
+        useState([]);
 
     const [loading, setLoading] =
         useState(false);
 
-    const categories = [
-        { id: 1, name: "Electronics" },
-        { id: 2, name: "Wallets & Bags" },
-        {
-            id: 3,
-            name:
-                "ID Cards & Documents",
-        },
-        { id: 4, name: "Keys" },
-        { id: 5, name: "Clothing" },
-        { id: 6, name: "Books" },
-        { id: 7, name: "Accessories" },
-        { id: 8, name: "Other" },
-    ];
+    const [error, setError] =
+        useState("");
 
-    const handleImageChange = (
-        e
+    useEffect(() => {
+        const loadCategories =
+            async () => {
+                try {
+                    const response =
+                        await fetch(
+                            `${API_URL}/api/categories`,
+                            {
+                                credentials:
+                                    "include",
+                            }
+                        );
+
+                    const data =
+                        await response.json();
+
+                    if (!response.ok)
+                        return;
+
+                    const list =
+                        Array.isArray(
+                            data
+                        )
+                            ? data
+                            : data.data ||
+                              data.categories ||
+                              [];
+
+                    setCategories(
+                        Array.isArray(
+                            list
+                        )
+                            ? list
+                            : []
+                    );
+
+                    if (
+                        list.length >
+                        0
+                    ) {
+                        setForm(
+                            (current) => ({
+                                ...current,
+                                categoryId:
+                                    String(
+                                        list[0]
+                                            .id
+                                    ),
+                            })
+                        );
+                    }
+                } catch (error) {
+                    console.error(
+                        "Category load error:",
+                        error
+                    );
+                }
+            };
+
+        loadCategories();
+    }, []);
+
+    const updateField = (
+        event
     ) => {
-        const selected =
-            Array.from(
-                e.target.files ||
-                    []
-            );
+        const {
+            name,
+            value,
+        } = event.target;
 
-        if (
-            selected.length > 5
-        ) {
-            setError(
-                "Maximum 5 images are allowed"
-            );
-            return;
-        }
+        setForm((current) => ({
+            ...current,
+            [name]: value,
+        }));
+    };
 
-        setImages(selected);
-        setError("");
+    const handleLocationChange = (
+        location
+    ) => {
+        setForm((current) => ({
+            ...current,
+            locationName:
+                location.locationName ??
+                location.name ??
+                current.locationName,
+            latitude:
+                location.latitude ??
+                location.lat ??
+                "",
+            longitude:
+                location.longitude ??
+                location.lng ??
+                "",
+        }));
     };
 
     const handleSubmit = async (
-        e
+        event
     ) => {
-        e.preventDefault();
+        event.preventDefault();
 
         try {
             setLoading(true);
             setError("");
 
-            const form =
+            const body =
                 new FormData();
 
-            form.append(
+            body.append(
                 "categoryId",
-                categoryId
+                form.categoryId
             );
 
-            form.append(
+            body.append(
                 "type",
-                type
+                form.type
             );
 
-            form.append(
+            body.append(
                 "title",
-                title.trim()
+                form.title
             );
 
-            form.append(
+            body.append(
                 "description",
-                description.trim()
+                form.description
             );
 
-            if (
-                locationName.trim()
-            ) {
-                form.append(
-                    "locationName",
-                    locationName.trim()
-                );
-            }
+            body.append(
+                "locationName",
+                form.locationName
+            );
 
-            if (
-                latitude !== ""
-            ) {
-                form.append(
+            if (form.latitude) {
+                body.append(
                     "latitude",
-                    latitude
+                    form.latitude
                 );
             }
 
-            if (
-                longitude !== ""
-            ) {
-                form.append(
+            if (form.longitude) {
+                body.append(
                     "longitude",
-                    longitude
+                    form.longitude
                 );
             }
 
-            if (dateOccurred) {
-                form.append(
-                    "dateOccurred",
-                    dateOccurred
-                );
-            }
+            body.append(
+                "dateOccurred",
+                form.dateOccurred
+            );
 
-            form.append(
+            body.append(
                 "contactPreference",
-                contactPreference
+                form.contactPreference
             );
 
-            images.forEach(
-                (image) =>
-                    form.append(
-                        "images",
-                        image
-                    )
-            );
+            files.forEach((file) => {
+                body.append(
+                    "images",
+                    file
+                );
+            });
 
             const response =
                 await fetch(
-                    "http://localhost:5000/api/items",
+                    `${API_URL}/api/items`,
                     {
-                        method:
-                            "POST",
+                        method: "POST",
                         credentials:
                             "include",
-                        body: form,
+                        body,
                     }
                 );
 
@@ -203,45 +213,57 @@ function ReportItem() {
                 await response.json();
 
             if (!response.ok) {
+                const validation =
+                    data.errors
+                        ?.map(
+                            (item) =>
+                                item.msg ||
+                                item.message
+                        )
+                        .join(", ");
+
                 throw new Error(
-                    data.message ||
-                        "Failed to report item"
+                    validation ||
+                        data.message ||
+                        "Unable to create item"
                 );
             }
 
-            navigate(
-                `/items/${data.data.id}`
-            );
+            const createdItem =
+                data.data ||
+                data.item;
+
+            if (
+                createdItem?.id
+            ) {
+                navigate(
+                    `/items/${createdItem.id}`
+                );
+            } else {
+                navigate(
+                    "/my-items"
+                );
+            }
         } catch (error) {
-            setError(
-                error.message
-            );
+            setError(error.message);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <>
+        <div className="page">
             <Navbar />
 
-            <main
-                className="page-shell"
-                style={{
-                    maxWidth:
-                        "820px",
-                }}
-            >
+            <main className="page-shell">
                 <div className="page-header">
-                    <h1 className="page-title">
-                        Report an item
+                    <h1>
+                        Report an Item
                     </h1>
 
-                    <p className="page-subtitle">
-                        Add clear details
-                        so the right person
-                        can identify it
-                        quickly.
+                    <p>
+                        Add details about a lost
+                        or found item.
                     </p>
                 </div>
 
@@ -252,307 +274,197 @@ function ReportItem() {
                 )}
 
                 <form
-                    onSubmit={
-                        handleSubmit
-                    }
-                    className="card"
+                    className="card card-body"
+                    onSubmit={handleSubmit}
                 >
-                    <div className="card-body">
-                        <div className="grid grid-2">
-                            <div className="form-group">
-                                <label className="form-label">
-                                    Type
-                                </label>
-
-                                <select
-                                    className="form-control"
-                                    value={
-                                        type
-                                    }
-                                    onChange={(
-                                        e
-                                    ) =>
-                                        setType(
-                                            e
-                                                .target
-                                                .value
-                                        )
-                                    }
-                                >
-                                    <option value="LOST">
-                                        Lost
-                                    </option>
-                                    <option value="FOUND">
-                                        Found
-                                    </option>
-                                </select>
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label">
-                                    Category
-                                </label>
-
-                                <select
-                                    className="form-control"
-                                    value={
-                                        categoryId
-                                    }
-                                    onChange={(
-                                        e
-                                    ) =>
-                                        setCategoryId(
-                                            e
-                                                .target
-                                                .value
-                                        )
-                                    }
-                                >
-                                    {categories.map(
-                                        (
-                                            category
-                                        ) => (
-                                            <option
-                                                key={
-                                                    category.id
-                                                }
-                                                value={
-                                                    category.id
-                                                }
-                                            >
-                                                {
-                                                    category.name
-                                                }
-                                            </option>
-                                        )
-                                    )}
-                                </select>
-                            </div>
-                        </div>
-
+                    <div
+                        style={{
+                            display: "grid",
+                            gridTemplateColumns:
+                                "repeat(2, minmax(0, 1fr))",
+                            gap: "14px",
+                        }}
+                    >
                         <div className="form-group">
                             <label className="form-label">
-                                Title
+                                Type
                             </label>
 
-                            <input
+                            <select
+                                name="type"
                                 className="form-control"
-                                type="text"
-                                placeholder="Black AirPods Pro"
                                 value={
-                                    title
+                                    form.type
                                 }
-                                onChange={(
-                                    e
-                                ) =>
-                                    setTitle(
-                                        e
-                                            .target
-                                            .value
-                                    )
-                                }
-                                required
-                            />
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label">
-                                Description
-                            </label>
-
-                            <textarea
-                                className="form-control"
-                                placeholder="Mention identifying details, where you last saw it, scratches, stickers, color, etc."
-                                value={
-                                    description
-                                }
-                                onChange={(
-                                    e
-                                ) =>
-                                    setDescription(
-                                        e
-                                            .target
-                                            .value
-                                    )
-                                }
-                                required
-                            />
-                        </div>
-
-                        <div className="grid grid-2">
-                            <div className="form-group">
-                                <label className="form-label">
-                                    Location
-                                    Name
-                                </label>
-
-                                <input
-                                    className="form-control"
-                                    value={
-                                        locationName
-                                    }
-                                    onChange={(
-                                        e
-                                    ) =>
-                                        setLocationName(
-                                            e
-                                                .target
-                                                .value
-                                        )
-                                    }
-                                    placeholder="Library, Block 3..."
-                                />
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label">
-                                    Date
-                                </label>
-
-                                <input
-                                    className="form-control"
-                                    type="date"
-                                    value={
-                                        dateOccurred
-                                    }
-                                    onChange={(
-                                        e
-                                    ) =>
-                                        setDateOccurred(
-                                            e
-                                                .target
-                                                .value
-                                        )
-                                    }
-                                    max={
-                                        new Date()
-                                            .toISOString()
-                                            .split(
-                                                "T"
-                                            )[0]
-                                    }
-                                />
-                            </div>
-                        </div>
-
-                        <div className="form-group">
-                            <label className="form-label">
-                                Pin location
-                            </label>
-
-                            <LocationPicker
-                                latitude={
-                                    latitude
-                                }
-                                longitude={
-                                    longitude
-                                }
-                                onLocationChange={(
-                                    lat,
-                                    lng
-                                ) => {
-                                    setLatitude(
-                                        String(
-                                            lat
-                                        )
-                                    );
-                                    setLongitude(
-                                        String(
-                                            lng
-                                        )
-                                    );
-                                }}
-                                onLocationNameChange={
-                                    setLocationName
-                                }
-                            />
-                        </div>
-
-                        <div className="grid grid-2">
-                            <div className="form-group">
-                                <label className="form-label">
-                                    Contact
-                                    preference
-                                </label>
-
-                                <select
-                                    className="form-control"
-                                    value={
-                                        contactPreference
-                                    }
-                                    onChange={(
-                                        e
-                                    ) =>
-                                        setContactPreference(
-                                            e
-                                                .target
-                                                .value
-                                        )
-                                    }
-                                >
-                                    <option value="IN_APP">
-                                        In App
-                                    </option>
-                                    <option value="EMAIL">
-                                        Email
-                                    </option>
-                                </select>
-                            </div>
-
-                            <div className="form-group">
-                                <label className="form-label">
-                                    Images
-                                </label>
-
-                                <input
-                                    className="form-control"
-                                    type="file"
-                                    accept="image/jpeg,image/png,image/webp"
-                                    multiple
-                                    onChange={
-                                        handleImageChange
-                                    }
-                                />
-                            </div>
-                        </div>
-
-                        {images.length >
-                            0 && (
-                            <p className="muted">
-                                {
-                                    images.length
-                                }{" "}
-                                image(s)
-                                selected
-                            </p>
-                        )}
-
-                        <div
-                            style={{
-                                display:
-                                    "flex",
-                                justifyContent:
-                                    "flex-end",
-                                marginTop:
-                                    "8px",
-                            }}
-                        >
-                            <button
-                                className="btn btn-primary"
-                                type="submit"
-                                disabled={
-                                    loading
+                                onChange={
+                                    updateField
                                 }
                             >
-                                {loading
-                                    ? "Publishing..."
-                                    : "Publish Report"}
-                            </button>
+                                <option value="LOST">
+                                    Lost
+                                </option>
+
+                                <option value="FOUND">
+                                    Found
+                                </option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">
+                                Category
+                            </label>
+
+                            <select
+                                name="categoryId"
+                                className="form-control"
+                                value={
+                                    form.categoryId
+                                }
+                                onChange={
+                                    updateField
+                                }
+                                required
+                            >
+                                {categories.map(
+                                    (
+                                        category
+                                    ) => (
+                                        <option
+                                            value={
+                                                category.id
+                                            }
+                                            key={
+                                                category.id
+                                            }
+                                        >
+                                            {
+                                                category.name
+                                            }
+                                        </option>
+                                    )
+                                )}
+                            </select>
                         </div>
                     </div>
+
+                    <div className="form-group">
+                        <label className="form-label">
+                            Title
+                        </label>
+
+                        <input
+                            name="title"
+                            className="form-control"
+                            value={form.title}
+                            onChange={updateField}
+                            placeholder="e.g. Black wallet"
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">
+                            Description
+                        </label>
+
+                        <textarea
+                            name="description"
+                            className="form-control"
+                            value={
+                                form.description
+                            }
+                            onChange={updateField}
+                            placeholder="Describe the item..."
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">
+                            Date
+                        </label>
+
+                        <input
+                            type="date"
+                            name="dateOccurred"
+                            className="form-control"
+                            value={
+                                form.dateOccurred
+                            }
+                            max={new Date()
+                                .toISOString()
+                                .slice(0, 10)}
+                            onChange={updateField}
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">
+                            Location
+                        </label>
+
+                        <LocationPicker
+                            value={{
+                                locationName:
+                                    form.locationName,
+                                latitude:
+                                    form.latitude,
+                                longitude:
+                                    form.longitude,
+                            }}
+                            onChange={
+                                handleLocationChange
+                            }
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">
+                            Images
+                        </label>
+
+                        <input
+                            type="file"
+                            className="form-control"
+                            accept="image/jpeg,image/png,image/webp"
+                            multiple
+                            onChange={(event) =>
+                                setFiles(
+                                    Array.from(
+                                        event.target
+                                            .files
+                                    ).slice(
+                                        0,
+                                        5
+                                    )
+                                )
+                            }
+                        />
+
+                        <small
+                            style={{
+                                color:
+                                    "#6b7280",
+                            }}
+                        >
+                            Maximum 5 images.
+                            JPEG, PNG or WEBP.
+                        </small>
+                    </div>
+
+                    <button
+                        className="btn btn-primary"
+                        disabled={loading}
+                    >
+                        {loading
+                            ? "Submitting..."
+                            : "Report Item"}
+                    </button>
                 </form>
             </main>
-        </>
+        </div>
     );
 }
 

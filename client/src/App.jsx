@@ -1,4 +1,7 @@
-import { useEffect, useState } from "react";
+import {
+    useEffect,
+    useState,
+} from "react";
 
 import {
     BrowserRouter,
@@ -7,59 +10,83 @@ import {
     Routes,
 } from "react-router-dom";
 
+import API_URL from "./config/api";
+
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import ReportItem from "./pages/ReportItem";
 import ItemDetails from "./pages/ItemDetails";
+import MyItems from "./pages/MyItems";
+import EditItem from "./pages/EditItem";
 import MyClaims from "./pages/MyClaims";
 import ClaimsReceived from "./pages/ClaimsReceived";
 import Profile from "./pages/Profile";
-import MyItems from "./pages/MyItems";
-import EditItem from "./pages/EditItem";
 import AdminDashboard from "./pages/AdminDashboard";
 
 function App() {
-    const [user, setUser] = useState(null);
+    const [user, setUser] =
+        useState(null);
+
     const [authLoading, setAuthLoading] =
         useState(true);
 
-    const checkAuthentication = async () => {
-        try {
-            const response = await fetch(
-                "http://localhost:5000/api/auth/me",
-                {
-                    credentials: "include",
-                }
-            );
-
-            if (!response.ok) {
-                setUser(null);
-                localStorage.removeItem("user");
-                return;
-            }
-
-            const data = await response.json();
-
-            setUser(data.user);
-
-            localStorage.setItem(
-                "user",
-                JSON.stringify(data.user)
-            );
-        } catch (error) {
-            console.error(
-                "Authentication check failed:",
-                error
-            );
-
-            setUser(null);
-            localStorage.removeItem("user");
-        } finally {
-            setAuthLoading(false);
-        }
-    };
-
     useEffect(() => {
+        const checkAuthentication =
+            async () => {
+                try {
+                    const response =
+                        await fetch(
+                            `${API_URL}/api/auth/me`,
+                            {
+                                credentials:
+                                    "include",
+                            }
+                        );
+
+                    if (!response.ok) {
+                        localStorage.removeItem(
+                            "user"
+                        );
+
+                        setUser(null);
+
+                        return;
+                    }
+
+                    const data =
+                        await response.json();
+
+                    const loggedInUser =
+                        data.user ||
+                        data.data ||
+                        null;
+
+                    setUser(loggedInUser);
+
+                    if (loggedInUser) {
+                        localStorage.setItem(
+                            "user",
+                            JSON.stringify(
+                                loggedInUser
+                            )
+                        );
+                    }
+                } catch (error) {
+                    console.error(
+                        "Authentication check failed:",
+                        error
+                    );
+
+                    localStorage.removeItem(
+                        "user"
+                    );
+
+                    setUser(null);
+                } finally {
+                    setAuthLoading(false);
+                }
+            };
+
         checkAuthentication();
     }, []);
 
@@ -68,25 +95,16 @@ function App() {
             <div
                 style={{
                     minHeight: "100vh",
-                    display: "grid",
-                    placeItems: "center",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent:
+                        "center",
                 }}
             >
-                Checking authentication...
+                Loading...
             </div>
         );
     }
-
-    const protectedPage = (component) => {
-        return user ? (
-            component
-        ) : (
-            <Navigate
-                to="/auth"
-                replace
-            />
-        );
-    };
 
     return (
         <BrowserRouter>
@@ -107,73 +125,125 @@ function App() {
 
                 <Route
                     path="/dashboard"
-                    element={protectedPage(
-                        <Dashboard />
-                    )}
+                    element={
+                        user ? (
+                            <Dashboard />
+                        ) : (
+                            <Navigate
+                                to="/auth"
+                                replace
+                            />
+                        )
+                    }
                 />
 
                 <Route
                     path="/report"
-                    element={protectedPage(
-                        <ReportItem />
-                    )}
+                    element={
+                        user ? (
+                            <ReportItem />
+                        ) : (
+                            <Navigate
+                                to="/auth"
+                                replace
+                            />
+                        )
+                    }
                 />
 
                 <Route
                     path="/items/:id"
-                    element={protectedPage(
-                        <ItemDetails />
-                    )}
-                />
-
-                <Route
-                    path="/my-claims"
-                    element={protectedPage(
-                        <MyClaims />
-                    )}
-                />
-
-                <Route
-                    path="/claims-received"
-                    element={protectedPage(
-                        <ClaimsReceived />
-                    )}
-                />
-
-                <Route
-                    path="/profile"
-                    element={protectedPage(
-                        <Profile />
-                    )}
+                    element={
+                        user ? (
+                            <ItemDetails />
+                        ) : (
+                            <Navigate
+                                to="/auth"
+                                replace
+                            />
+                        )
+                    }
                 />
 
                 <Route
                     path="/my-items"
-                    element={protectedPage(
-                        <MyItems />
-                    )}
+                    element={
+                        user ? (
+                            <MyItems />
+                        ) : (
+                            <Navigate
+                                to="/auth"
+                                replace
+                            />
+                        )
+                    }
                 />
 
                 <Route
                     path="/items/:id/edit"
-                    element={protectedPage(
-                        <EditItem />
-                    )}
+                    element={
+                        user ? (
+                            <EditItem />
+                        ) : (
+                            <Navigate
+                                to="/auth"
+                                replace
+                            />
+                        )
+                    }
+                />
+
+                <Route
+                    path="/my-claims"
+                    element={
+                        user ? (
+                            <MyClaims />
+                        ) : (
+                            <Navigate
+                                to="/auth"
+                                replace
+                            />
+                        )
+                    }
+                />
+
+                <Route
+                    path="/claims"
+                    element={
+                        user ? (
+                            <ClaimsReceived />
+                        ) : (
+                            <Navigate
+                                to="/auth"
+                                replace
+                            />
+                        )
+                    }
+                />
+
+                <Route
+                    path="/profile"
+                    element={
+                        user ? (
+                            <Profile />
+                        ) : (
+                            <Navigate
+                                to="/auth"
+                                replace
+                            />
+                        )
+                    }
                 />
 
                 <Route
                     path="/admin"
                     element={
-                        user?.role === "ADMIN" ? (
+                        user?.role ===
+                        "ADMIN" ? (
                             <AdminDashboard />
-                        ) : user ? (
-                            <Navigate
-                                to="/dashboard"
-                                replace
-                            />
                         ) : (
                             <Navigate
-                                to="/auth"
+                                to="/dashboard"
                                 replace
                             />
                         )

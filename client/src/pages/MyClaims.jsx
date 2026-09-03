@@ -1,31 +1,74 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+
 import Navbar from "../components/Navbar";
+import API_URL from "../config/api";
 
 function MyClaims() {
-    const [claims, setClaims] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+    const [claims, setClaims] =
+        useState([]);
 
-    const fetchMyClaims = async () => {
+    const [loading, setLoading] =
+        useState(true);
+
+    const [error, setError] =
+        useState("");
+
+    const extractClaims = (data) => {
+        if (Array.isArray(data)) return data;
+        if (Array.isArray(data.claims)) return data.claims;
+        if (Array.isArray(data.data)) return data.data;
+        if (Array.isArray(data.data?.claims)) return data.data.claims;
+
+        return [];
+    };
+
+    const getImageUrl = (
+        image
+    ) => {
+        if (!image) return "";
+
+        if (
+            image.startsWith(
+                "http://"
+            ) ||
+            image.startsWith(
+                "https://"
+            )
+        ) {
+            return image;
+        }
+
+        return `${API_URL}${image}`;
+    };
+
+    const loadClaims = async () => {
         try {
-            const response = await fetch(
-                "http://localhost:5000/api/claims/mine",
-                {
-                    credentials: "include",
-                }
-            );
+            setLoading(true);
+            setError("");
 
-            const data = await response.json();
+            const response =
+                await fetch(
+                    `${API_URL}/api/claims/mine`,
+                    {
+                        credentials:
+                            "include",
+                    }
+                );
+
+            const data =
+                await response.json();
 
             if (!response.ok) {
                 throw new Error(
                     data.message ||
-                        "Failed to load claims"
+                        "Unable to load claims"
                 );
             }
 
-            setClaims(data.data || []);
+            setClaims(
+                extractClaims(data)
+            );
         } catch (error) {
             setError(error.message);
         } finally {
@@ -34,62 +77,57 @@ function MyClaims() {
     };
 
     useEffect(() => {
-        fetchMyClaims();
+        loadClaims();
     }, []);
 
-    const cancelClaim = async (claimId) => {
-        if (
-            !window.confirm(
+    const cancelClaim = async (
+        claimId
+    ) => {
+        const confirmed =
+            window.confirm(
                 "Cancel this claim?"
-            )
-        ) {
-            return;
-        }
-
-        try {
-            const response = await fetch(
-                `http://localhost:5000/api/claims/${claimId}/cancel`,
-                {
-                    method: "PATCH",
-                    credentials: "include",
-                }
             );
 
-            const data = await response.json();
+        if (!confirmed) return;
+
+        try {
+            setError("");
+
+            const response =
+                await fetch(
+                    `${API_URL}/api/claims/${claimId}/cancel`,
+                    {
+                        method: "PATCH",
+                        credentials:
+                            "include",
+                    }
+                );
+
+            const data =
+                await response.json();
 
             if (!response.ok) {
                 throw new Error(
                     data.message ||
-                        "Failed to cancel claim"
+                        "Unable to cancel claim"
                 );
             }
 
-            setClaims((current) =>
-                current.map((claim) =>
-                    claim.id === claimId
-                        ? {
-                              ...claim,
-                              status: "CANCELLED",
-                          }
-                        : claim
-                )
-            );
+            await loadClaims();
         } catch (error) {
             setError(error.message);
         }
     };
 
     return (
-        <>
+        <div className="page">
             <Navbar />
 
             <main className="page-shell">
                 <div className="page-header">
-                    <h1 className="page-title">
-                        My Claims
-                    </h1>
+                    <h1>My Claims</h1>
 
-                    <p className="page-subtitle">
+                    <p>
                         Track the claims you have
                         submitted.
                     </p>
@@ -102,130 +140,138 @@ function MyClaims() {
                 )}
 
                 {loading ? (
-                    <div className="empty-state">
+                    <div className="card card-body">
                         Loading claims...
                     </div>
-                ) : claims.length === 0 ? (
-                    <div className="card empty-state">
-                        You have not submitted any
-                        claims yet.
+                ) : claims.length ===
+                  0 ? (
+                    <div className="empty-state">
+                        <h3>
+                            No claims yet
+                        </h3>
+
+                        <p>
+                            Browse items and submit
+                            a claim if you find
+                            something that belongs
+                            to you.
+                        </p>
+
+                        <Link
+                            to="/dashboard"
+                            className="btn btn-primary"
+                            style={{
+                                marginTop:
+                                    "16px",
+                            }}
+                        >
+                            Explore Items
+                        </Link>
                     </div>
                 ) : (
-                    <div
-                        style={{
-                            display: "grid",
-                            gap: "16px",
-                        }}
-                    >
-                        {claims.map((claim) => (
-                            <div
-                                key={claim.id}
-                                className="card"
-                            >
-                                <div className="card-body">
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            justifyContent:
-                                                "space-between",
-                                            alignItems:
-                                                "start",
-                                            gap: "12px",
-                                        }}
+                    <div className="items-grid">
+                        {claims.map(
+                            (claim) => {
+                                const image =
+                                    claim.primary_image ||
+                                    claim.image_url;
+
+                                return (
+                                    <article
+                                        className="item-card"
+                                        key={
+                                            claim.id
+                                        }
                                     >
-                                        <div>
-                                            <h3
-                                                style={{
-                                                    margin:
-                                                        "0 0 6px",
-                                                }}
-                                            >
+                                        {image ? (
+                                            <img
+                                                className="item-card-image"
+                                                src={getImageUrl(
+                                                    image
+                                                )}
+                                                alt={
+                                                    claim.item_title ||
+                                                    "Item"
+                                                }
+                                            />
+                                        ) : (
+                                            <div className="item-card-no-image">
+                                                No image
+                                            </div>
+                                        )}
+
+                                        <div className="item-card-content">
+                                            <div className="item-card-top">
+                                                {claim.item_type && (
+                                                    <span
+                                                        className={`badge ${
+                                                            claim.item_type ===
+                                                            "FOUND"
+                                                                ? "badge-found"
+                                                                : "badge-lost"
+                                                        }`}
+                                                    >
+                                                        {
+                                                            claim.item_type
+                                                        }
+                                                    </span>
+                                                )}
+
+                                                <span
+                                                    className={`badge badge-${claim.status?.toLowerCase()}`}
+                                                >
+                                                    {
+                                                        claim.status
+                                                    }
+                                                </span>
+                                            </div>
+
+                                            <h3>
                                                 {claim.item_title ||
+                                                    claim.title ||
                                                     "Item"}
                                             </h3>
 
-                                            <p
-                                                className="muted"
-                                                style={{
-                                                    margin: 0,
-                                                }}
-                                            >
-                                                {claim.message}
-                                            </p>
-                                        </div>
-
-                                        <span className="badge badge-neutral">
-                                            {claim.status}
-                                        </span>
-                                    </div>
-
-                                    {claim.owner_response && (
-                                        <div
-                                            style={{
-                                                marginTop:
-                                                    "14px",
-                                                padding:
-                                                    "12px",
-                                                borderRadius:
-                                                    "10px",
-                                                background:
-                                                    "#f9fafb",
-                                            }}
-                                        >
-                                            <strong>
-                                                Owner response
-                                            </strong>
-
-                                            <p
-                                                style={{
-                                                    margin:
-                                                        "5px 0 0",
-                                                }}
-                                            >
+                                            <p>
                                                 {
-                                                    claim.owner_response
+                                                    claim.message
                                                 }
                                             </p>
+
+                                            <div className="item-card-footer">
+                                                {claim.item_id && (
+                                                    <Link
+                                                        to={`/items/${claim.item_id}`}
+                                                    >
+                                                        View
+                                                        Item
+                                                    </Link>
+                                                )}
+
+                                                {claim.status ===
+                                                    "PENDING" && (
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-danger"
+                                                        onClick={() =>
+                                                            cancelClaim(
+                                                                claim.id
+                                                            )
+                                                        }
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                )}
+                                            </div>
                                         </div>
-                                    )}
-
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            gap: "8px",
-                                            marginTop:
-                                                "16px",
-                                        }}
-                                    >
-                                        <Link
-                                            to={`/items/${claim.item_id}`}
-                                            className="btn btn-secondary"
-                                        >
-                                            View Item
-                                        </Link>
-
-                                        {claim.status ===
-                                            "PENDING" && (
-                                            <button
-                                                type="button"
-                                                className="btn btn-danger"
-                                                onClick={() =>
-                                                    cancelClaim(
-                                                        claim.id
-                                                    )
-                                                }
-                                            >
-                                                Cancel
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        ))}
+                                    </article>
+                                );
+                            }
+                        )}
                     </div>
                 )}
             </main>
-        </>
+        </div>
     );
 }
 

@@ -1,5 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import {
+    useEffect,
+    useMemo,
+    useState,
+} from "react";
+
+import {
+    Link,
+    useParams,
+} from "react-router-dom";
+
 import {
     MapContainer,
     Marker,
@@ -7,34 +16,58 @@ import {
 } from "react-leaflet";
 
 import Navbar from "../components/Navbar";
+import API_URL from "../config/api";
 
 function ItemDetails() {
     const { id } = useParams();
 
-    const [item, setItem] = useState(null);
-    const [message, setMessage] = useState("");
-    const [claimError, setClaimError] = useState("");
-    const [claimLoading, setClaimLoading] = useState(false);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
+    const [item, setItem] =
+        useState(null);
+
+    const [loading, setLoading] =
+        useState(true);
+
+    const [error, setError] =
+        useState("");
+
+    const [claimMessage, setClaimMessage] =
+        useState("");
+
+    const [claimLoading, setClaimLoading] =
+        useState(false);
 
     const currentUser = useMemo(() => {
         try {
             return JSON.parse(
-                localStorage.getItem("user") || "null"
+                localStorage.getItem(
+                    "user"
+                ) || "null"
             );
         } catch {
             return null;
         }
     }, []);
 
-    const fetchItem = async () => {
+    const getImageUrl = (image) => {
+        if (!image) return "";
+
+        if (
+            image.startsWith("http://") ||
+            image.startsWith("https://")
+        ) {
+            return image;
+        }
+
+        return `${API_URL}${image}`;
+    };
+
+    const loadItem = async () => {
         try {
             setLoading(true);
             setError("");
 
             const response = await fetch(
-                `http://localhost:5000/api/items/${id}`,
+                `${API_URL}/api/items/${id}`,
                 {
                     credentials: "include",
                 }
@@ -45,11 +78,26 @@ function ItemDetails() {
             if (!response.ok) {
                 throw new Error(
                     data.message ||
-                        "Failed to load item"
+                        "Unable to load item"
                 );
             }
 
-            setItem(data.data);
+            const loadedItem =
+                data.data?.item ||
+                data.item ||
+                data.data ||
+                data;
+
+            const images =
+                loadedItem.images ||
+                data.images ||
+                data.data?.images ||
+                [];
+
+            setItem({
+                ...loadedItem,
+                images,
+            });
         } catch (error) {
             setError(error.message);
         } finally {
@@ -58,34 +106,34 @@ function ItemDetails() {
     };
 
     useEffect(() => {
-        fetchItem();
+        loadItem();
     }, [id]);
 
-    const handleClaim = async (e) => {
-        e.preventDefault();
+    const submitClaim = async (
+        event
+    ) => {
+        event.preventDefault();
 
         try {
             setClaimLoading(true);
-            setClaimError("");
-
-            if (message.trim().length < 5) {
-                throw new Error(
-                    "Claim message must be at least 5 characters"
-                );
-            }
+            setError("");
 
             const response = await fetch(
-                "http://localhost:5000/api/claims",
+                `${API_URL}/api/claims`,
                 {
                     method: "POST",
+
                     headers: {
                         "Content-Type":
                             "application/json",
                     },
+
                     credentials: "include",
+
                     body: JSON.stringify({
                         itemId: id,
-                        message: message.trim(),
+                        message:
+                            claimMessage,
                     }),
                 }
             );
@@ -95,17 +143,17 @@ function ItemDetails() {
             if (!response.ok) {
                 throw new Error(
                     data.message ||
-                        "Failed to submit claim"
+                        "Unable to submit claim"
                 );
             }
 
-            setMessage("");
+            setClaimMessage("");
 
-            alert(
-                "Claim submitted successfully"
+            window.alert(
+                "Claim submitted successfully."
             );
         } catch (error) {
-            setClaimError(error.message);
+            setError(error.message);
         } finally {
             setClaimLoading(false);
         }
@@ -113,522 +161,344 @@ function ItemDetails() {
 
     if (loading) {
         return (
-            <>
+            <div className="page">
                 <Navbar />
 
                 <main className="page-shell">
-                    <div className="details-layout">
-                        <div className="card">
-                            <div
-                                className="skeleton"
-                                style={{
-                                    height: "420px",
-                                    borderRadius:
-                                        "18px 18px 0 0",
-                                }}
-                            />
-
-                            <div className="card-body">
-                                <div className="skeleton skeleton-title" />
-                                <div className="skeleton skeleton-text" />
-                                <div className="skeleton skeleton-text" />
-                                <div className="skeleton skeleton-text short" />
-                            </div>
-                        </div>
-
-                        <div className="card">
-                            <div className="card-body">
-                                <div className="skeleton skeleton-title" />
-                                <div className="skeleton skeleton-text" />
-                                <div className="skeleton skeleton-text" />
-                                <div className="skeleton skeleton-text" />
-                            </div>
-                        </div>
-                    </div>
+                    Loading item...
                 </main>
-            </>
-        );
-    }
-
-    if (error) {
-        return (
-            <>
-                <Navbar />
-
-                <main className="page-shell">
-                    <div className="alert alert-error">
-                        {error}
-                    </div>
-                </main>
-            </>
+            </div>
         );
     }
 
     if (!item) {
-        return null;
+        return (
+            <div className="page">
+                <Navbar />
+
+                <main className="page-shell">
+                    <div className="alert alert-error">
+                        {error ||
+                            "Item not found"}
+                    </div>
+                </main>
+            </div>
+        );
     }
 
     const isOwner =
-        currentUser?.id === item.user_id;
-
-    const hasCoordinates =
-        item.latitude !== null &&
-        item.latitude !== undefined &&
-        item.longitude !== null &&
-        item.longitude !== undefined;
+        currentUser?.id ===
+        item.user_id;
 
     const primaryImage =
-        item.images &&
-        item.images.length > 0
-            ? item.images[0]
-            : null;
+        item.images?.[0]?.image_url ||
+        item.primary_image ||
+        item.image_url;
 
-    const additionalImages =
-        item.images?.slice(1) || [];
+    const latitude =
+        Number(item.latitude);
+
+    const longitude =
+        Number(item.longitude);
+
+    const hasCoordinates =
+        Number.isFinite(latitude) &&
+        Number.isFinite(longitude);
 
     return (
-        <>
+        <div className="page">
             <Navbar />
 
             <main className="page-shell">
+                {error && (
+                    <div className="alert alert-error">
+                        {error}
+                    </div>
+                )}
+
                 <div className="details-layout">
-
                     <section>
-                        <div className="card">
-
-                            {primaryImage ? (
+                        <div className="card card-body">
+                            {primaryImage && (
                                 <img
-                                    src={`http://localhost:5000${primaryImage.image_url}`}
-                                    alt={item.title}
-                                    style={{
-                                        width: "100%",
-                                        height: "420px",
-                                        objectFit: "cover",
-                                        borderRadius:
-                                            "18px 18px 0 0",
-                                    }}
+                                    className="details-image"
+                                    src={getImageUrl(
+                                        primaryImage
+                                    )}
+                                    alt={
+                                        item.title
+                                    }
                                 />
-                            ) : (
-                                <div
-                                    className="item-placeholder"
-                                    style={{
-                                        height: "420px",
-                                        borderRadius:
-                                            "18px 18px 0 0",
-                                    }}
-                                >
-                                    No image available
+                            )}
+
+                            {item.images?.length >
+                                1 && (
+                                <div className="gallery">
+                                    {item.images.map(
+                                        (
+                                            image
+                                        ) => (
+                                            <img
+                                                key={
+                                                    image.id
+                                                }
+                                                src={getImageUrl(
+                                                    image.image_url
+                                                )}
+                                                alt={
+                                                    item.title
+                                                }
+                                            />
+                                        )
+                                    )}
                                 </div>
                             )}
 
-                            <div className="card-body">
+                            <div
+                                style={{
+                                    display: "flex",
+                                    justifyContent:
+                                        "space-between",
+                                    alignItems:
+                                        "center",
+                                    gap: "10px",
+                                    marginTop:
+                                        "22px",
+                                }}
+                            >
+                                <span
+                                    className={`badge ${
+                                        item.type ===
+                                        "FOUND"
+                                            ? "badge-found"
+                                            : "badge-lost"
+                                    }`}
+                                >
+                                    {item.type}
+                                </span>
 
-                                <div className="status-row">
-                                    <span
-                                        className={`badge ${
-                                            item.type === "LOST"
-                                                ? "badge-lost"
-                                                : "badge-found"
-                                        }`}
-                                    >
-                                        {item.type}
+                                <span
+                                    className={`badge badge-${item.status?.toLowerCase()}`}
+                                >
+                                    {item.status}
+                                </span>
+                            </div>
+
+                            <h1
+                                style={{
+                                    margin:
+                                        "18px 0 10px",
+                                }}
+                            >
+                                {item.title}
+                            </h1>
+
+                            <p
+                                style={{
+                                    color:
+                                        "#6b7280",
+                                    lineHeight: 1.7,
+                                }}
+                            >
+                                {item.description}
+                            </p>
+
+                            <div className="meta-grid">
+                                <div className="meta-item">
+                                    <span className="meta-label">
+                                        Location
                                     </span>
 
-                                    <span
-                                        className={`badge ${
-                                            item.status === "ACTIVE"
-                                                ? "badge-active"
-                                                : "badge-neutral"
-                                        }`}
-                                    >
-                                        {item.status}
+                                    <span className="meta-value">
+                                        {item.location_name ||
+                                            "Not specified"}
                                     </span>
                                 </div>
 
-                                <h1
-                                    className="page-title"
-                                    style={{
-                                        fontSize: "2rem",
-                                        marginTop: "14px",
-                                    }}
-                                >
-                                    {item.title}
-                                </h1>
+                                <div className="meta-item">
+                                    <span className="meta-label">
+                                        Date
+                                    </span>
 
-                                <div className="divider" />
+                                    <span className="meta-value">
+                                        {item.date_occurred
+                                            ? new Date(
+                                                  item.date_occurred
+                                              ).toLocaleDateString()
+                                            : "Not specified"}
+                                    </span>
+                                </div>
 
-                                <h3 className="section-title">
-                                    Description
-                                </h3>
+                                <div className="meta-item">
+                                    <span className="meta-label">
+                                        Category
+                                    </span>
 
-                                <p
-                                    style={{
-                                        marginTop: 0,
-                                        lineHeight: 1.75,
-                                        color: "#374151",
-                                        whiteSpace: "pre-wrap",
-                                    }}
-                                >
-                                    {item.description}
-                                </p>
+                                    <span className="meta-value">
+                                        {item.category_name ||
+                                            "Other"}
+                                    </span>
+                                </div>
 
-                                {additionalImages.length >
-                                    0 && (
-                                    <>
-                                        <div className="divider" />
+                                <div className="meta-item">
+                                    <span className="meta-label">
+                                        Contact
+                                    </span>
 
-                                        <h3 className="section-title">
-                                            More images
-                                        </h3>
-
-                                        <div className="image-gallery">
-                                            {additionalImages.map(
-                                                (image) => (
-                                                    <img
-                                                        key={
-                                                            image.id
-                                                        }
-                                                        src={`http://localhost:5000${image.image_url}`}
-                                                        alt={
-                                                            item.title
-                                                        }
-                                                        style={{
-                                                            width:
-                                                                "100%",
-                                                            height:
-                                                                "150px",
-                                                            objectFit:
-                                                                "cover",
-                                                            borderRadius:
-                                                                "12px",
-                                                        }}
-                                                    />
-                                                )
-                                            )}
-                                        </div>
-                                    </>
-                                )}
-
-                                {hasCoordinates && (
-                                    <>
-                                        <div className="divider" />
-
-                                        <h3 className="section-title">
-                                            Location
-                                        </h3>
-
-                                        {item.location_name && (
-                                            <p
-                                                className="muted"
-                                                style={{
-                                                    marginTop:
-                                                        "-4px",
-                                                }}
-                                            >
-                                                {
-                                                    item.location_name
-                                                }
-                                            </p>
-                                        )}
-
-                                        <div
-                                            style={{
-                                                borderRadius:
-                                                    "14px",
-                                                overflow:
-                                                    "hidden",
-                                                border:
-                                                    "1px solid #e5e7eb",
-                                            }}
-                                        >
-                                            <MapContainer
-                                                center={[
-                                                    Number(
-                                                        item.latitude
-                                                    ),
-                                                    Number(
-                                                        item.longitude
-                                                    ),
-                                                ]}
-                                                zoom={16}
-                                                scrollWheelZoom={
-                                                    false
-                                                }
-                                                style={{
-                                                    height:
-                                                        "320px",
-                                                    width:
-                                                        "100%",
-                                                }}
-                                            >
-                                                <TileLayer
-                                                    attribution='&copy; OpenStreetMap contributors'
-                                                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                                                />
-
-                                                <Marker
-                                                    position={[
-                                                        Number(
-                                                            item.latitude
-                                                        ),
-                                                        Number(
-                                                            item.longitude
-                                                        ),
-                                                    ]}
-                                                />
-                                            </MapContainer>
-                                        </div>
-                                    </>
-                                )}
+                                    <span className="meta-value">
+                                        {item.contact_preference ||
+                                            "IN_APP"}
+                                    </span>
+                                </div>
                             </div>
+
+                            {hasCoordinates && (
+                                <div
+                                    style={{
+                                        height:
+                                            "320px",
+                                        overflow:
+                                            "hidden",
+                                        borderRadius:
+                                            "12px",
+                                    }}
+                                >
+                                    <MapContainer
+                                        center={[
+                                            latitude,
+                                            longitude,
+                                        ]}
+                                        zoom={15}
+                                        style={{
+                                            height:
+                                                "100%",
+                                            width:
+                                                "100%",
+                                        }}
+                                    >
+                                        <TileLayer
+                                            attribution='&copy; OpenStreetMap contributors'
+                                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                        />
+
+                                        <Marker
+                                            position={[
+                                                latitude,
+                                                longitude,
+                                            ]}
+                                        />
+                                    </MapContainer>
+                                </div>
+                            )}
                         </div>
                     </section>
 
                     <aside className="details-sidebar">
-
-                        <div className="card">
-                            <div className="card-body">
-                                <h3 className="section-title">
-                                    Item details
-                                </h3>
-
-                                <div className="meta-list">
-
-                                    <div>
-                                        <div className="meta-label">
-                                            Category
-                                        </div>
-
-                                        <div className="meta-value">
-                                            {item.category_name ||
-                                                "Not specified"}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div className="meta-label">
-                                            Location
-                                        </div>
-
-                                        <div className="meta-value">
-                                            {item.location_name ||
-                                                "Not specified"}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div className="meta-label">
-                                            Date
-                                        </div>
-
-                                        <div className="meta-value">
-                                            {item.date_occurred
-                                                ? new Date(
-                                                      item.date_occurred
-                                                  ).toLocaleDateString()
-                                                : "Not specified"}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div className="meta-label">
-                                            Reported by
-                                        </div>
-
-                                        <div className="meta-value">
-                                            {item.user_name ||
-                                                "User"}
-                                        </div>
-                                    </div>
-
-                                    <div>
-                                        <div className="meta-label">
-                                            Contact preference
-                                        </div>
-
-                                        <div className="meta-value">
-                                            {item.contact_preference ===
-                                            "IN_APP"
-                                                ? "In App"
-                                                : item.contact_preference ||
-                                                  "Not specified"}
-                                        </div>
-                                    </div>
-
-                                    {item.created_at && (
-                                        <div>
-                                            <div className="meta-label">
-                                                Reported
-                                            </div>
-
-                                            <div className="meta-value">
-                                                {new Date(
-                                                    item.created_at
-                                                ).toLocaleDateString()}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {isOwner && (
-                            <div className="card">
-                                <div className="card-body">
-                                    <span className="badge badge-neutral">
-                                        Your report
-                                    </span>
-
-                                    <h3
-                                        style={{
-                                            margin:
-                                                "14px 0 6px",
-                                        }}
-                                    >
-                                        You reported this item
+                        <div className="card card-body">
+                            {isOwner ? (
+                                <>
+                                    <h3>
+                                        Your Item
                                     </h3>
 
                                     <p
-                                        className="muted"
                                         style={{
-                                            lineHeight: 1.6,
-                                            marginBottom: 0,
+                                            color:
+                                                "#6b7280",
                                         }}
                                     >
-                                        Manage this listing,
-                                        update its status, or
-                                        remove it from My Items.
+                                        You reported
+                                        this item.
                                     </p>
-                                </div>
-                            </div>
-                        )}
 
-                        {!isOwner &&
-                            item.status ===
-                                "ACTIVE" && (
-                                <form
-                                    className="card"
-                                    onSubmit={
-                                        handleClaim
-                                    }
-                                >
-                                    <div className="card-body">
-                                        <h3 className="section-title">
-                                            Is this yours?
-                                        </h3>
+                                    <Link
+                                        to={`/items/${id}/edit`}
+                                        className="btn btn-primary"
+                                        style={{
+                                            width:
+                                                "100%",
+                                        }}
+                                    >
+                                        Edit Item
+                                    </Link>
+                                </>
+                            ) : (
+                                <>
+                                    <h3>
+                                        Think this is
+                                        yours?
+                                    </h3>
 
-                                        <p
-                                            className="muted"
-                                            style={{
-                                                lineHeight:
-                                                    1.6,
-                                            }}
-                                        >
-                                            Give the owner
-                                            enough information
-                                            to verify that the
-                                            item belongs to
-                                            you.
-                                        </p>
+                                    <p
+                                        style={{
+                                            color:
+                                                "#6b7280",
+                                            lineHeight:
+                                                1.6,
+                                        }}
+                                    >
+                                        Submit a claim
+                                        with details
+                                        that can help
+                                        the owner verify
+                                        you.
+                                    </p>
 
-                                        {claimError && (
-                                            <div className="alert alert-error">
-                                                {
-                                                    claimError
-                                                }
-                                            </div>
-                                        )}
-
-                                        <div className="form-group">
-                                            <label className="form-label">
-                                                Verification
-                                                message
-                                            </label>
-
-                                            <textarea
-                                                className="form-control"
-                                                rows={6}
-                                                minLength={5}
-                                                maxLength={
-                                                    2000
-                                                }
-                                                value={
-                                                    message
-                                                }
-                                                onChange={(
-                                                    e
-                                                ) =>
-                                                    setMessage(
-                                                        e
-                                                            .target
-                                                            .value
-                                                    )
-                                                }
-                                                placeholder="Example: The case has a small scratch on the left side and my initials are written inside..."
-                                                required
-                                            />
-                                        </div>
+                                    <form
+                                        onSubmit={
+                                            submitClaim
+                                        }
+                                    >
+                                        <textarea
+                                            className="form-control"
+                                            value={
+                                                claimMessage
+                                            }
+                                            minLength={
+                                                5
+                                            }
+                                            maxLength={
+                                                2000
+                                            }
+                                            required
+                                            placeholder="Describe why you believe this item belongs to you..."
+                                            onChange={(
+                                                event
+                                            ) =>
+                                                setClaimMessage(
+                                                    event
+                                                        .target
+                                                        .value
+                                                )
+                                            }
+                                        />
 
                                         <button
-                                            type="submit"
                                             className="btn btn-primary"
                                             disabled={
-                                                claimLoading
+                                                claimLoading ||
+                                                item.status !==
+                                                    "ACTIVE"
                                             }
                                             style={{
                                                 width:
                                                     "100%",
+                                                marginTop:
+                                                    "12px",
                                             }}
                                         >
                                             {claimLoading
                                                 ? "Submitting..."
                                                 : "Submit Claim"}
                                         </button>
-                                    </div>
-                                </form>
+                                    </form>
+                                </>
                             )}
-
-                        {!isOwner &&
-                            item.status !==
-                                "ACTIVE" && (
-                                <div className="card">
-                                    <div className="card-body">
-                                        <span className="badge badge-neutral">
-                                            {
-                                                item.status
-                                            }
-                                        </span>
-
-                                        <h3
-                                            style={{
-                                                margin:
-                                                    "14px 0 6px",
-                                            }}
-                                        >
-                                            Claims unavailable
-                                        </h3>
-
-                                        <p
-                                            className="muted"
-                                            style={{
-                                                marginBottom:
-                                                    0,
-                                                lineHeight:
-                                                    1.6,
-                                            }}
-                                        >
-                                            This report is no
-                                            longer accepting
-                                            new ownership
-                                            claims.
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
+                        </div>
                     </aside>
                 </div>
             </main>
-        </>
+        </div>
     );
 }
 

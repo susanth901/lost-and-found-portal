@@ -1,39 +1,76 @@
-import { useEffect, useState } from "react";
+import {
+    useEffect,
+    useState,
+} from "react";
+
 import Navbar from "../components/Navbar";
+import API_URL from "../config/api";
 
 function Profile() {
-    const [profile, setProfile] = useState(null);
-    const [name, setName] = useState("");
-    const [profileImageUrl, setProfileImageUrl] =
+    const [profile, setProfile] =
+        useState({
+            name: "",
+            email: "",
+            profileImageUrl: "",
+            role: "",
+        });
+
+    const [loading, setLoading] =
+        useState(true);
+
+    const [saving, setSaving] =
+        useState(false);
+
+    const [error, setError] =
         useState("");
-    const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [error, setError] = useState("");
-    const [message, setMessage] = useState("");
 
-    const fetchProfile = async () => {
+    const [success, setSuccess] =
+        useState("");
+
+    const loadProfile = async () => {
         try {
-            const response = await fetch(
-                "http://localhost:5000/api/users/profile",
-                {
-                    credentials: "include",
-                }
-            );
+            setLoading(true);
+            setError("");
 
-            const data = await response.json();
+            const response =
+                await fetch(
+                    `${API_URL}/api/users/profile`,
+                    {
+                        credentials:
+                            "include",
+                    }
+                );
+
+            const data =
+                await response.json();
 
             if (!response.ok) {
                 throw new Error(
                     data.message ||
-                        "Failed to load profile"
+                        "Unable to load profile"
                 );
             }
 
-            setProfile(data.data);
-            setName(data.data?.name || "");
-            setProfileImageUrl(
-                data.data?.profile_image_url || ""
-            );
+            const user =
+                data.user ||
+                data.data ||
+                data;
+
+            setProfile({
+                name:
+                    user.name ||
+                    "",
+                email:
+                    user.email ||
+                    "",
+                profileImageUrl:
+                    user.profile_image_url ||
+                    user.profileImageUrl ||
+                    "",
+                role:
+                    user.role ||
+                    "USER",
+            });
         } catch (error) {
             setError(error.message);
         } finally {
@@ -42,52 +79,85 @@ function Profile() {
     };
 
     useEffect(() => {
-        fetchProfile();
+        loadProfile();
     }, []);
 
-    const handleUpdateProfile = async (e) => {
-        e.preventDefault();
+    const handleSubmit = async (
+        event
+    ) => {
+        event.preventDefault();
 
         try {
             setSaving(true);
             setError("");
-            setMessage("");
+            setSuccess("");
 
-            const response = await fetch(
-                "http://localhost:5000/api/users/profile",
-                {
-                    method: "PATCH",
-                    headers: {
-                        "Content-Type":
-                            "application/json",
-                    },
-                    credentials: "include",
-                    body: JSON.stringify({
-                        name: name.trim(),
-                        profileImageUrl:
-                            profileImageUrl.trim(),
-                    }),
-                }
-            );
+            const response =
+                await fetch(
+                    `${API_URL}/api/users/profile`,
+                    {
+                        method: "PATCH",
 
-            const data = await response.json();
+                        headers: {
+                            "Content-Type":
+                                "application/json",
+                        },
+
+                        credentials:
+                            "include",
+
+                        body: JSON.stringify(
+                            {
+                                name:
+                                    profile.name,
+                                profileImageUrl:
+                                    profile.profileImageUrl ||
+                                    null,
+                            }
+                        ),
+                    }
+                );
+
+            const data =
+                await response.json();
 
             if (!response.ok) {
                 throw new Error(
                     data.message ||
-                        "Failed to update profile"
+                        "Unable to update profile"
                 );
             }
 
-            setProfile(data.data);
+            const updatedUser =
+                data.user ||
+                data.data ||
+                {
+                    ...profile,
+                };
+
+            const storedUser =
+                JSON.parse(
+                    localStorage.getItem(
+                        "user"
+                    ) || "{}"
+                );
 
             localStorage.setItem(
                 "user",
-                JSON.stringify(data.data)
+                JSON.stringify({
+                    ...storedUser,
+                    ...updatedUser,
+                    name:
+                        updatedUser.name ||
+                        profile.name,
+                    profile_image_url:
+                        updatedUser.profile_image_url ||
+                        profile.profileImageUrl,
+                })
             );
 
-            setMessage(
-                "Profile updated successfully"
+            setSuccess(
+                "Profile updated successfully."
             );
         } catch (error) {
             setError(error.message);
@@ -98,34 +168,26 @@ function Profile() {
 
     if (loading) {
         return (
-            <>
+            <div className="page">
                 <Navbar />
+
                 <main className="page-shell">
-                    <div className="empty-state">
-                        Loading profile...
-                    </div>
+                    Loading profile...
                 </main>
-            </>
+            </div>
         );
     }
 
     return (
-        <>
+        <div className="page">
             <Navbar />
 
-            <main
-                className="page-shell"
-                style={{
-                    maxWidth: "760px",
-                }}
-            >
+            <main className="page-shell">
                 <div className="page-header">
-                    <h1 className="page-title">
-                        Profile
-                    </h1>
+                    <h1>Profile</h1>
 
-                    <p className="page-subtitle">
-                        Manage your basic account
+                    <p>
+                        Manage your account
                         information.
                     </p>
                 </div>
@@ -136,134 +198,136 @@ function Profile() {
                     </div>
                 )}
 
-                {message && (
+                {success && (
                     <div className="alert alert-success">
-                        {message}
+                        {success}
                     </div>
                 )}
 
-                <div className="card">
-                    <div className="card-body">
-                        <div
-                            style={{
-                                display: "flex",
-                                gap: "18px",
-                                alignItems: "center",
-                                marginBottom: "26px",
-                            }}
-                        >
-                            <div
-                                style={{
-                                    width: "84px",
-                                    height: "84px",
-                                    borderRadius: "50%",
-                                    overflow: "hidden",
-                                    background: "#f3f4f6",
-                                    display: "grid",
-                                    placeItems: "center",
-                                    fontWeight: 700,
-                                    fontSize: "1.4rem",
-                                }}
-                            >
-                                {profileImageUrl ? (
-                                    <img
-                                        src={profileImageUrl}
-                                        alt="Profile"
-                                        style={{
-                                            width: "100%",
-                                            height: "100%",
-                                            objectFit: "cover",
-                                        }}
-                                    />
-                                ) : (
-                                    name
-                                        ?.charAt(0)
-                                        .toUpperCase() ||
-                                    "U"
-                                )}
-                            </div>
-
-                            <div>
-                                <h2
-                                    style={{
-                                        margin: 0,
-                                    }}
-                                >
-                                    {profile?.name}
-                                </h2>
-
-                                <p
-                                    className="muted"
-                                    style={{
-                                        margin:
-                                            "4px 0",
-                                    }}
-                                >
-                                    {profile?.email}
-                                </p>
-
-                                <span className="badge badge-neutral">
-                                    {profile?.role}
-                                </span>
-                            </div>
-                        </div>
-
-                        <form
-                            onSubmit={
-                                handleUpdateProfile
+                <form
+                    className="card card-body"
+                    style={{
+                        maxWidth: "650px",
+                    }}
+                    onSubmit={handleSubmit}
+                >
+                    {profile.profileImageUrl && (
+                        <img
+                            src={
+                                profile.profileImageUrl
                             }
-                        >
-                            <div className="form-group">
-                                <label className="form-label">
-                                    Name
-                                </label>
+                            alt="Profile"
+                            style={{
+                                width: "90px",
+                                height: "90px",
+                                objectFit:
+                                    "cover",
+                                borderRadius:
+                                    "50%",
+                                marginBottom:
+                                    "20px",
+                            }}
+                        />
+                    )}
 
-                                <input
-                                    className="form-control"
-                                    value={name}
-                                    onChange={(e) =>
-                                        setName(
-                                            e.target.value
-                                        )
-                                    }
-                                    minLength={2}
-                                    maxLength={100}
-                                    required
-                                />
-                            </div>
+                    <div className="form-group">
+                        <label className="form-label">
+                            Name
+                        </label>
 
-                            <div className="form-group">
-                                <label className="form-label">
-                                    Profile Image URL
-                                </label>
-
-                                <input
-                                    className="form-control"
-                                    type="url"
-                                    value={profileImageUrl}
-                                    onChange={(e) =>
-                                        setProfileImageUrl(
-                                            e.target.value
-                                        )
-                                    }
-                                    placeholder="https://..."
-                                />
-                            </div>
-
-                            <button
-                                type="submit"
-                                className="btn btn-primary"
-                                disabled={saving}
-                            >
-                                {saving
-                                    ? "Saving..."
-                                    : "Save Changes"}
-                            </button>
-                        </form>
+                        <input
+                            className="form-control"
+                            value={
+                                profile.name
+                            }
+                            onChange={(
+                                event
+                            ) =>
+                                setProfile(
+                                    (
+                                        current
+                                    ) => ({
+                                        ...current,
+                                        name:
+                                            event
+                                                .target
+                                                .value,
+                                    })
+                                )
+                            }
+                            required
+                        />
                     </div>
-                </div>
+
+                    <div className="form-group">
+                        <label className="form-label">
+                            Email
+                        </label>
+
+                        <input
+                            className="form-control"
+                            value={
+                                profile.email
+                            }
+                            disabled
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">
+                            Role
+                        </label>
+
+                        <input
+                            className="form-control"
+                            value={
+                                profile.role
+                            }
+                            disabled
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label className="form-label">
+                            Profile Image URL
+                        </label>
+
+                        <input
+                            type="url"
+                            className="form-control"
+                            value={
+                                profile.profileImageUrl
+                            }
+                            placeholder="https://..."
+                            onChange={(
+                                event
+                            ) =>
+                                setProfile(
+                                    (
+                                        current
+                                    ) => ({
+                                        ...current,
+                                        profileImageUrl:
+                                            event
+                                                .target
+                                                .value,
+                                    })
+                                )
+                            }
+                        />
+                    </div>
+
+                    <button
+                        className="btn btn-primary"
+                        disabled={saving}
+                    >
+                        {saving
+                            ? "Saving..."
+                            : "Save Profile"}
+                    </button>
+                </form>
             </main>
-        </>
+        </div>
     );
 }
 

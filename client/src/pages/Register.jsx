@@ -1,29 +1,47 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-function Register() {
-    const [name, setName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [error, setError] = useState("");
-    const [message, setMessage] = useState("");
+import API_URL from "../config/api";
 
+function Register() {
     const navigate = useNavigate();
 
-    const handleRegister = async (e) => {
-        e.preventDefault();
+    const [name, setName] =
+        useState("");
+
+    const [email, setEmail] =
+        useState("");
+
+    const [password, setPassword] =
+        useState("");
+
+    const [error, setError] =
+        useState("");
+
+    const [loading, setLoading] =
+        useState(false);
+
+    const handleSubmit = async (
+        event
+    ) => {
+        event.preventDefault();
 
         try {
+            setLoading(true);
             setError("");
-            setMessage("");
 
             const response = await fetch(
-                "http://localhost:5000/api/auth/register",
+                `${API_URL}/api/auth/register`,
                 {
                     method: "POST",
+
                     headers: {
-                        "Content-Type": "application/json",
+                        "Content-Type":
+                            "application/json",
                     },
+
+                    credentials: "include",
+
                     body: JSON.stringify({
                         name,
                         email,
@@ -32,70 +50,191 @@ function Register() {
                 }
             );
 
-            const data = await response.json();
+            const data =
+                await response.json();
 
             if (!response.ok) {
+                const validationMessage =
+                    data.errors
+                        ?.map(
+                            (item) =>
+                                item.message ||
+                                item.msg
+                        )
+                        .join(", ");
+
                 throw new Error(
-                    data.message || "Registration failed"
+                    validationMessage ||
+                        data.message ||
+                        "Registration failed"
                 );
             }
 
-            setMessage(
-                "Account created successfully. Please login."
-            );
+            if (data.user) {
+                localStorage.setItem(
+                    "user",
+                    JSON.stringify(
+                        data.user
+                    )
+                );
+            }
 
-            setTimeout(() => {
-                navigate("/email-login");
-            }, 1000);
-
+            navigate("/dashboard");
         } catch (error) {
             setError(error.message);
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <div>
-            <h1>Create Account</h1>
+        <div
+            style={{
+                maxWidth: "420px",
+                margin: "60px auto",
+                padding: "24px",
+            }}
+        >
+            <h1>
+                Create Account
+            </h1>
 
-            <form onSubmit={handleRegister}>
-                <input
-                    type="text"
-                    placeholder="Name"
-                    value={name}
-                    onChange={(e) =>
-                        setName(e.target.value)
-                    }
-                    required
-                />
+            {error && (
+                <p
+                    style={{
+                        color: "red",
+                    }}
+                >
+                    {error}
+                </p>
+            )}
 
-                <input
-                    type="email"
-                    placeholder="Email"
-                    value={email}
-                    onChange={(e) =>
-                        setEmail(e.target.value)
-                    }
-                    required
-                />
+            <form
+                onSubmit={handleSubmit}
+            >
+                <div
+                    style={{
+                        marginBottom:
+                            "16px",
+                    }}
+                >
+                    <label>
+                        Name
+                    </label>
 
-                <input
-                    type="password"
-                    placeholder="Password"
-                    value={password}
-                    onChange={(e) =>
-                        setPassword(e.target.value)
-                    }
-                    required
-                />
+                    <br />
 
-                <button type="submit">
-                    Register
+                    <input
+                        type="text"
+                        value={name}
+                        onChange={(event) =>
+                            setName(
+                                event.target
+                                    .value
+                            )
+                        }
+                        required
+                        style={{
+                            width: "100%",
+                            padding: "10px",
+                            marginTop:
+                                "6px",
+                        }}
+                    />
+                </div>
+
+                <div
+                    style={{
+                        marginBottom:
+                            "16px",
+                    }}
+                >
+                    <label>
+                        Email
+                    </label>
+
+                    <br />
+
+                    <input
+                        type="email"
+                        value={email}
+                        onChange={(event) =>
+                            setEmail(
+                                event.target
+                                    .value
+                            )
+                        }
+                        required
+                        style={{
+                            width: "100%",
+                            padding: "10px",
+                            marginTop:
+                                "6px",
+                        }}
+                    />
+                </div>
+
+                <div
+                    style={{
+                        marginBottom:
+                            "16px",
+                    }}
+                >
+                    <label>
+                        Password
+                    </label>
+
+                    <br />
+
+                    <input
+                        type="password"
+                        value={password}
+                        onChange={(event) =>
+                            setPassword(
+                                event.target
+                                    .value
+                            )
+                        }
+                        required
+                        style={{
+                            width: "100%",
+                            padding: "10px",
+                            marginTop:
+                                "6px",
+                        }}
+                    />
+                </div>
+
+                <button
+                    type="submit"
+                    disabled={loading}
+                    style={{
+                        width: "100%",
+                        padding: "10px",
+                    }}
+                >
+                    {loading
+                        ? "Creating account..."
+                        : "Register"}
                 </button>
             </form>
 
-            {error && <p>{error}</p>}
-
-            {message && <p>{message}</p>}
+            <button
+                type="button"
+                onClick={() =>
+                    navigate(
+                        "/email-login"
+                    )
+                }
+                style={{
+                    width: "100%",
+                    padding: "10px",
+                    marginTop: "12px",
+                }}
+            >
+                Already have an
+                account? Login
+            </button>
         </div>
     );
 }
