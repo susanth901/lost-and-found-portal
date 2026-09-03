@@ -272,16 +272,61 @@ function ClaimsReceived() {
 
         const body =
             encodeURIComponent(
-                `Hi,\n\nI'm contacting you regarding the accepted claim for "${itemTitle}".\n\n`
+                `Hi,\n\nYour claim for "${itemTitle}" was accepted on Lost & Found.\n\nI'm contacting you so we can coordinate the return of the item.\n\nThanks.`
             );
 
-        const gmailUrl =
+        const gmailAppUrl =
+            `googlegmail://co?to=${encodeURIComponent(
+                email
+            )}&subject=${subject}&body=${body}`;
+
+        const gmailWebUrl =
             `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
                 email
             )}&su=${subject}&body=${body}`;
 
+        const isMobile =
+            /Android|iPhone|iPad|iPod/i.test(
+                navigator.userAgent
+            );
+
+        if (isMobile) {
+            let appOpened = false;
+
+            const handleVisibilityChange =
+                () => {
+                    if (
+                        document.hidden
+                    ) {
+                        appOpened = true;
+                    }
+                };
+
+            document.addEventListener(
+                "visibilitychange",
+                handleVisibilityChange
+            );
+
+            window.location.href =
+                gmailAppUrl;
+
+            setTimeout(() => {
+                document.removeEventListener(
+                    "visibilitychange",
+                    handleVisibilityChange
+                );
+
+                if (!appOpened) {
+                    window.location.href =
+                        gmailWebUrl;
+                }
+            }, 1200);
+
+            return;
+        }
+
         window.location.href =
-            gmailUrl;
+            gmailWebUrl;
     };
 
     return (
