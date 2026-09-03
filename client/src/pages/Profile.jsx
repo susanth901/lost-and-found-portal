@@ -480,20 +480,7 @@ function Profile() {
                                     Picture
                                 </button>
 
-                                <p
-                                    style={{
-                                        margin:
-                                            "8px 0 0",
-                                        fontSize:
-                                            "0.82rem",
-                                        color:
-                                            "#6b7280",
-                                    }}
-                                >
-                                    JPEG, PNG or
-                                    WEBP. Maximum
-                                    5 MB.
-                                </p>
+
                             </div>
                         </div>
 
