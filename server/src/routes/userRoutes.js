@@ -10,12 +10,8 @@ const {
 } = require("../middleware/authMiddleware");
 
 const {
-    validateRequest,
-} = require("../middleware/validationMiddleware");
-
-const {
-    profileValidator,
-} = require("../middleware/requestValidators");
+    upload,
+} = require("../middleware/upload");
 
 const router = express.Router();
 
@@ -28,8 +24,7 @@ router.get(
 router.patch(
     "/profile",
     authenticateUser,
-    profileValidator,
-    validateRequest,
+    upload.single("profileImage"),
     updateProfile
 );
 

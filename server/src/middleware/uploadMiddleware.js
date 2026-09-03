@@ -3,7 +3,11 @@ const path = require("path");
 const crypto = require("crypto");
 
 const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
+    destination: (
+        req,
+        file,
+        cb
+    ) => {
         cb(
             null,
             path.join(
@@ -13,7 +17,11 @@ const storage = multer.diskStorage({
         );
     },
 
-    filename: (req, file, cb) => {
+    filename: (
+        req,
+        file,
+        cb
+    ) => {
         const extension =
             path.extname(
                 file.originalname
@@ -68,8 +76,7 @@ const upload = multer({
         fileSize:
             5 * 1024 * 1024,
 
-        files:
-            5,
+        files: 5,
     },
 });
 

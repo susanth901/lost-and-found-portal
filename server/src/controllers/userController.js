@@ -6,7 +6,12 @@ const getProfile = async (req, res) => {
 
         const result = await pool.query(
             `
-            SELECT id, name, email, role, profile_image_url, created_at
+            SELECT
+                id,
+                name,
+                email,
+                profile_image_url,
+                created_at
             FROM users
             WHERE id = $1
             `,
@@ -24,7 +29,6 @@ const getProfile = async (req, res) => {
             success: true,
             data: result.rows[0],
         });
-
     } catch (error) {
         console.error("Profile error:", error);
 
@@ -34,19 +38,24 @@ const getProfile = async (req, res) => {
         });
     }
 };
+
 const updateProfile = async (req, res) => {
     try {
         const userId = req.user.userId;
+        const { name } = req.body;
 
-        const {
-            name,
-            profileImageUrl,
-        } = req.body;
+        let profileImageUrl = null;
+
+        if (req.file) {
+            profileImageUrl =
+                `/uploads/${req.file.filename}`;
+        }
 
         if (!name && !profileImageUrl) {
             return res.status(400).json({
                 success: false,
-                message: "Provide at least one field to update",
+                message:
+                    "Provide a name or profile picture to update",
             });
         }
 
@@ -55,19 +64,19 @@ const updateProfile = async (req, res) => {
             UPDATE users
             SET
                 name = COALESCE($1, name),
-                profile_image_url = COALESCE($2, profile_image_url)
+                profile_image_url = COALESCE($2, profile_image_url),
+                updated_at = CURRENT_TIMESTAMP
             WHERE id = $3
             RETURNING
                 id,
                 name,
                 email,
-                role,
                 profile_image_url,
                 updated_at
             `,
             [
                 name || null,
-                profileImageUrl || null,
+                profileImageUrl,
                 userId,
             ]
         );
@@ -81,19 +90,24 @@ const updateProfile = async (req, res) => {
 
         return res.status(200).json({
             success: true,
-            message: "Profile updated successfully",
+            message:
+                "Profile updated successfully",
             data: result.rows[0],
         });
-
     } catch (error) {
-        console.error("Update profile error:", error);
+        console.error(
+            "Update profile error:",
+            error
+        );
 
         return res.status(500).json({
             success: false,
-            message: "Internal server error",
+            message:
+                "Internal server error",
         });
     }
 };
+
 module.exports = {
     getProfile,
     updateProfile,

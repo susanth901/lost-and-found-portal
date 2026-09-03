@@ -1,5 +1,6 @@
 import {
     useEffect,
+    useRef,
     useState,
 } from "react";
 
@@ -12,8 +13,17 @@ function Profile() {
             name: "",
             email: "",
             profileImageUrl: "",
-            role: "",
         });
+
+    const [
+        selectedImage,
+        setSelectedImage,
+    ] = useState(null);
+
+    const [
+        previewImage,
+        setPreviewImage,
+    ] = useState("");
 
     const [loading, setLoading] =
         useState(true);
@@ -27,60 +37,174 @@ function Profile() {
     const [success, setSuccess] =
         useState("");
 
-    const loadProfile = async () => {
-        try {
-            setLoading(true);
-            setError("");
+    const fileInputRef =
+        useRef(null);
 
-            const response =
-                await fetch(
-                    `${API_URL}/api/users/profile`,
-                    {
-                        credentials:
-                            "include",
-                    }
-                );
-
-            const data =
-                await response.json();
-
-            if (!response.ok) {
-                throw new Error(
-                    data.message ||
-                        "Unable to load profile"
-                );
-            }
-
-            const user =
-                data.user ||
-                data.data ||
-                data;
-
-            setProfile({
-                name:
-                    user.name ||
-                    "",
-                email:
-                    user.email ||
-                    "",
-                profileImageUrl:
-                    user.profile_image_url ||
-                    user.profileImageUrl ||
-                    "",
-                role:
-                    user.role ||
-                    "USER",
-            });
-        } catch (error) {
-            setError(error.message);
-        } finally {
-            setLoading(false);
+    const getImageUrl = (
+        image
+    ) => {
+        if (!image) {
+            return "";
         }
+
+        if (
+            image.startsWith(
+                "http://"
+            ) ||
+            image.startsWith(
+                "https://"
+            ) ||
+            image.startsWith(
+                "blob:"
+            )
+        ) {
+            return image;
+        }
+
+        return `${API_URL}${image}`;
     };
+
+    const loadProfile =
+        async () => {
+            try {
+                setLoading(true);
+                setError("");
+
+                const response =
+                    await fetch(
+                        `${API_URL}/api/users/profile`,
+                        {
+                            credentials:
+                                "include",
+                        }
+                    );
+
+                const data =
+                    await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message ||
+                            "Unable to load profile"
+                    );
+                }
+
+                const user =
+                    data.data ||
+                    data.user ||
+                    data;
+
+                setProfile({
+                    name:
+                        user.name ||
+                        "",
+                    email:
+                        user.email ||
+                        "",
+                    profileImageUrl:
+                        user.profile_image_url ||
+                        "",
+                });
+            } catch (error) {
+                setError(
+                    error.message
+                );
+            } finally {
+                setLoading(false);
+            }
+        };
 
     useEffect(() => {
         loadProfile();
     }, []);
+
+    useEffect(() => {
+        return () => {
+            if (
+                previewImage &&
+                previewImage.startsWith(
+                    "blob:"
+                )
+            ) {
+                URL.revokeObjectURL(
+                    previewImage
+                );
+            }
+        };
+    }, [previewImage]);
+
+    const handleImageChange = (
+        event
+    ) => {
+        const file =
+            event.target.files?.[0];
+
+        if (!file) {
+            return;
+        }
+
+        const allowedTypes = [
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+        ];
+
+        if (
+            !allowedTypes.includes(
+                file.type
+            )
+        ) {
+            setError(
+                "Please select a JPEG, PNG or WEBP image."
+            );
+
+            event.target.value =
+                "";
+
+            return;
+        }
+
+        if (
+            file.size >
+            5 * 1024 * 1024
+        ) {
+            setError(
+                "Profile picture must be smaller than 5 MB."
+            );
+
+            event.target.value =
+                "";
+
+            return;
+        }
+
+        setError("");
+        setSuccess("");
+
+        if (
+            previewImage &&
+            previewImage.startsWith(
+                "blob:"
+            )
+        ) {
+            URL.revokeObjectURL(
+                previewImage
+            );
+        }
+
+        const preview =
+            URL.createObjectURL(
+                file
+            );
+
+        setSelectedImage(
+            file
+        );
+
+        setPreviewImage(
+            preview
+        );
+    };
 
     const handleSubmit = async (
         event
@@ -92,29 +216,37 @@ function Profile() {
             setError("");
             setSuccess("");
 
+            const formData =
+                new FormData();
+
+            if (
+                profile.name.trim()
+            ) {
+                formData.append(
+                    "name",
+                    profile.name.trim()
+                );
+            }
+
+            if (
+                selectedImage
+            ) {
+                formData.append(
+                    "profileImage",
+                    selectedImage
+                );
+            }
+
             const response =
                 await fetch(
                     `${API_URL}/api/users/profile`,
                     {
                         method: "PATCH",
 
-                        headers: {
-                            "Content-Type":
-                                "application/json",
-                        },
-
                         credentials:
                             "include",
 
-                        body: JSON.stringify(
-                            {
-                                name:
-                                    profile.name,
-                                profileImageUrl:
-                                    profile.profileImageUrl ||
-                                    null,
-                            }
-                        ),
+                        body: formData,
                     }
                 );
 
@@ -129,11 +261,27 @@ function Profile() {
             }
 
             const updatedUser =
-                data.user ||
                 data.data ||
-                {
-                    ...profile,
-                };
+                data.user ||
+                data;
+
+            const updatedImage =
+                updatedUser.profile_image_url ||
+                profile.profileImageUrl;
+
+            setProfile(
+                (current) => ({
+                    ...current,
+
+                    name:
+                        updatedUser.name ||
+                        current.name,
+
+                    profileImageUrl:
+                        updatedImage ||
+                        "",
+                })
+            );
 
             const storedUser =
                 JSON.parse(
@@ -146,37 +294,49 @@ function Profile() {
                 "user",
                 JSON.stringify({
                     ...storedUser,
-                    ...updatedUser,
+
                     name:
                         updatedUser.name ||
                         profile.name,
+
                     profile_image_url:
-                        updatedUser.profile_image_url ||
-                        profile.profileImageUrl,
+                        updatedImage ||
+                        "",
                 })
             );
+
+            setSelectedImage(
+                null
+            );
+
+            setPreviewImage(
+                ""
+            );
+
+            if (
+                fileInputRef.current
+            ) {
+                fileInputRef.current.value =
+                    "";
+            }
 
             setSuccess(
                 "Profile updated successfully."
             );
         } catch (error) {
-            setError(error.message);
+            setError(
+                error.message
+            );
         } finally {
             setSaving(false);
         }
     };
 
-    if (loading) {
-        return (
-            <div className="page">
-                <Navbar />
-
-                <main className="page-shell">
-                    Loading profile...
-                </main>
-            </div>
+    const displayImage =
+        previewImage ||
+        getImageUrl(
+            profile.profileImageUrl
         );
-    }
 
     return (
         <div className="page">
@@ -184,7 +344,9 @@ function Profile() {
 
             <main className="page-shell">
                 <div className="page-header">
-                    <h1>Profile</h1>
+                    <h1>
+                        Profile
+                    </h1>
 
                     <p>
                         Manage your account
@@ -204,128 +366,193 @@ function Profile() {
                     </div>
                 )}
 
-                <form
-                    className="card card-body"
-                    style={{
-                        maxWidth: "650px",
-                    }}
-                    onSubmit={handleSubmit}
-                >
-                    {profile.profileImageUrl && (
-                        <img
-                            src={
-                                profile.profileImageUrl
-                            }
-                            alt="Profile"
-                            style={{
-                                width: "90px",
-                                height: "90px",
-                                objectFit:
-                                    "cover",
-                                borderRadius:
-                                    "50%",
-                                marginBottom:
-                                    "20px",
-                            }}
-                        />
-                    )}
-
-                    <div className="form-group">
-                        <label className="form-label">
-                            Name
-                        </label>
-
-                        <input
-                            className="form-control"
-                            value={
-                                profile.name
-                            }
-                            onChange={(
-                                event
-                            ) =>
-                                setProfile(
-                                    (
-                                        current
-                                    ) => ({
-                                        ...current,
-                                        name:
-                                            event
-                                                .target
-                                                .value,
-                                    })
-                                )
-                            }
-                            required
-                        />
+                {loading ? (
+                    <div className="card card-body">
+                        Loading profile...
                     </div>
-
-                    <div className="form-group">
-                        <label className="form-label">
-                            Email
-                        </label>
-
-                        <input
-                            className="form-control"
-                            value={
-                                profile.email
-                            }
-                            disabled
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label">
-                            Role
-                        </label>
-
-                        <input
-                            className="form-control"
-                            value={
-                                profile.role
-                            }
-                            disabled
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label className="form-label">
-                            Profile Image URL
-                        </label>
-
-                        <input
-                            type="url"
-                            className="form-control"
-                            value={
-                                profile.profileImageUrl
-                            }
-                            placeholder="https://..."
-                            onChange={(
-                                event
-                            ) =>
-                                setProfile(
-                                    (
-                                        current
-                                    ) => ({
-                                        ...current,
-                                        profileImageUrl:
-                                            event
-                                                .target
-                                                .value,
-                                    })
-                                )
-                            }
-                        />
-                    </div>
-
-                    <button
-                        className="btn btn-primary"
-                        disabled={saving}
+                ) : (
+                    <form
+                        className="card card-body"
+                        style={{
+                            maxWidth:
+                                "650px",
+                        }}
+                        onSubmit={
+                            handleSubmit
+                        }
                     >
-                        {saving
-                            ? "Saving..."
-                            : "Save Profile"}
-                    </button>
-                </form>
+                        <div
+                            style={{
+                                display:
+                                    "flex",
+                                alignItems:
+                                    "center",
+                                gap:
+                                    "20px",
+                                marginBottom:
+                                    "28px",
+                            }}
+                        >
+                            <div
+                                style={{
+                                    width:
+                                        "110px",
+                                    height:
+                                        "110px",
+                                    borderRadius:
+                                        "50%",
+                                    overflow:
+                                        "hidden",
+                                    background:
+                                        "#f3f4f6",
+                                    display:
+                                        "flex",
+                                    alignItems:
+                                        "center",
+                                    justifyContent:
+                                        "center",
+                                    flexShrink:
+                                        0,
+                                    border:
+                                        "1px solid #e5e7eb",
+                                }}
+                            >
+                                {displayImage ? (
+                                    <img
+                                        src={
+                                            displayImage
+                                        }
+                                        alt="Profile"
+                                        style={{
+                                            width:
+                                                "100%",
+                                            height:
+                                                "100%",
+                                            objectFit:
+                                                "cover",
+                                        }}
+                                    />
+                                ) : (
+                                    <span
+                                        style={{
+                                            fontSize:
+                                                "2rem",
+                                            fontWeight:
+                                                700,
+                                            color:
+                                                "#6b7280",
+                                        }}
+                                    >
+                                        {profile.name
+                                            ?.charAt(
+                                                0
+                                            )
+                                            .toUpperCase() ||
+                                            "U"}
+                                    </span>
+                                )}
+                            </div>
+
+                            <div>
+                                <input
+                                    ref={
+                                        fileInputRef
+                                    }
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp"
+                                    style={{
+                                        display:
+                                            "none",
+                                    }}
+                                    onChange={
+                                        handleImageChange
+                                    }
+                                />
+
+                                <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    onClick={() =>
+                                        fileInputRef.current?.click()
+                                    }
+                                >
+                                    Change Profile
+                                    Picture
+                                </button>
+
+                                <p
+                                    style={{
+                                        margin:
+                                            "8px 0 0",
+                                        fontSize:
+                                            "0.82rem",
+                                        color:
+                                            "#6b7280",
+                                    }}
+                                >
+                                    JPEG, PNG or
+                                    WEBP. Maximum
+                                    5 MB.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">
+                                Name
+                            </label>
+
+                            <input
+                                className="form-control"
+                                value={
+                                    profile.name
+                                }
+                                onChange={(
+                                    event
+                                ) =>
+                                    setProfile(
+                                        (
+                                            current
+                                        ) => ({
+                                            ...current,
+
+                                            name:
+                                                event
+                                                    .target
+                                                    .value,
+                                        })
+                                    )
+                                }
+                                required
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label className="form-label">
+                                Email
+                            </label>
+
+                            <input
+                                className="form-control"
+                                value={
+                                    profile.email
+                                }
+                                disabled
+                            />
+                        </div>
+
+                        <button
+                            className="btn btn-primary"
+                            disabled={
+                                saving
+                            }
+                        >
+                            {saving
+                                ? "Saving..."
+                                : "Save Profile"}
+                        </button>
+                    </form>
+                )}
             </main>
         </div>
     );
