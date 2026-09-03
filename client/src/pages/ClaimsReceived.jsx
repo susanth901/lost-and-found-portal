@@ -23,29 +23,33 @@ function ClaimsReceived() {
     const extractItems = (
         data
     ) => {
-        if (Array.isArray(data))
+        if (Array.isArray(data)) {
             return data;
+        }
 
         if (
             Array.isArray(
-                data.items
+                data?.items
             )
-        )
+        ) {
             return data.items;
+        }
 
         if (
             Array.isArray(
-                data.data
+                data?.data
             )
-        )
+        ) {
             return data.data;
+        }
 
         if (
             Array.isArray(
-                data.data?.items
+                data?.data?.items
             )
-        )
+        ) {
             return data.data.items;
+        }
 
         return [];
     };
@@ -53,29 +57,33 @@ function ClaimsReceived() {
     const extractClaims = (
         data
     ) => {
-        if (Array.isArray(data))
+        if (Array.isArray(data)) {
             return data;
+        }
 
         if (
             Array.isArray(
-                data.claims
+                data?.claims
             )
-        )
+        ) {
             return data.claims;
+        }
 
         if (
             Array.isArray(
-                data.data
+                data?.data
             )
-        )
+        ) {
             return data.data;
+        }
 
         if (
             Array.isArray(
-                data.data?.claims
+                data?.data?.claims
             )
-        )
+        ) {
             return data.data.claims;
+        }
 
         return [];
     };
@@ -153,7 +161,14 @@ function ClaimsReceived() {
                                             item.type,
                                     })
                                 );
-                            } catch {
+                            } catch (
+                                error
+                            ) {
+                                console.error(
+                                    "Claim load error:",
+                                    error
+                                );
+
                                 return [];
                             }
                         }
@@ -227,16 +242,29 @@ function ClaimsReceived() {
 
                 await loadClaims();
             } catch (error) {
+                console.error(
+                    "Update claim error:",
+                    error
+                );
+
                 setError(
                     error.message
                 );
             }
         };
 
-    const getMailLink = (
+    const openGmail = (
         email,
         itemTitle
     ) => {
+        if (!email) {
+            setError(
+                "Claimant email is not available."
+            );
+
+            return;
+        }
+
         const subject =
             encodeURIComponent(
                 `Lost & Found - ${itemTitle}`
@@ -247,7 +275,13 @@ function ClaimsReceived() {
                 `Hi,\n\nI'm contacting you regarding the accepted claim for "${itemTitle}".\n\n`
             );
 
-        return `mailto:${email}?subject=${subject}&body=${body}`;
+        const gmailUrl =
+            `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+                email
+            )}&su=${subject}&body=${body}`;
+
+        window.location.href =
+            gmailUrl;
     };
 
     return (
@@ -262,8 +296,8 @@ function ClaimsReceived() {
 
                     <p>
                         Review claims
-                        submitted for the
-                        items you reported.
+                        submitted for your
+                        reported items.
                     </p>
                 </div>
 
@@ -312,16 +346,12 @@ function ClaimsReceived() {
                                         style={{
                                             display:
                                                 "flex",
-
                                             justifyContent:
                                                 "space-between",
-
                                             alignItems:
                                                 "flex-start",
-
                                             gap:
                                                 "16px",
-
                                             flexWrap:
                                                 "wrap",
                                         }}
@@ -330,35 +360,36 @@ function ClaimsReceived() {
                                             style={{
                                                 flex:
                                                     "1",
+                                                minWidth:
+                                                    "240px",
                                             }}
                                         >
                                             <div
                                                 style={{
                                                     display:
                                                         "flex",
-
                                                     gap:
                                                         "8px",
-
-                                                    marginBottom:
-                                                        "10px",
-
                                                     flexWrap:
                                                         "wrap",
+                                                    marginBottom:
+                                                        "10px",
                                                 }}
                                             >
-                                                <span
-                                                    className={`badge ${
-                                                        claim.item_type ===
-                                                        "FOUND"
-                                                            ? "badge-found"
-                                                            : "badge-lost"
-                                                    }`}
-                                                >
-                                                    {
-                                                        claim.item_type
-                                                    }
-                                                </span>
+                                                {claim.item_type && (
+                                                    <span
+                                                        className={`badge ${
+                                                            claim.item_type ===
+                                                            "FOUND"
+                                                                ? "badge-found"
+                                                                : "badge-lost"
+                                                        }`}
+                                                    >
+                                                        {
+                                                            claim.item_type
+                                                        }
+                                                    </span>
+                                                )}
 
                                                 <span
                                                     className={`badge badge-${claim.status?.toLowerCase()}`}
@@ -383,7 +414,6 @@ function ClaimsReceived() {
                                                 style={{
                                                     margin:
                                                         "0 0 10px",
-
                                                     color:
                                                         "#6b7280",
                                                 }}
@@ -398,7 +428,7 @@ function ClaimsReceived() {
                                             <p
                                                 style={{
                                                     lineHeight:
-                                                        1.6,
+                                                        "1.6",
                                                 }}
                                             >
                                                 {
@@ -406,76 +436,91 @@ function ClaimsReceived() {
                                                 }
                                             </p>
 
+                                            {claim.owner_response && (
+                                                <p
+                                                    style={{
+                                                        marginTop:
+                                                            "10px",
+                                                        color:
+                                                            "#6b7280",
+                                                    }}
+                                                >
+                                                    Your
+                                                    response:{" "}
+                                                    {
+                                                        claim.owner_response
+                                                    }
+                                                </p>
+                                            )}
+
                                             {claim.status ===
-                                                "ACCEPTED" &&
-                                                claim.claimant_email && (
-                                                    <div
+                                                "ACCEPTED" && (
+                                                <div
+                                                    style={{
+                                                        marginTop:
+                                                            "18px",
+                                                        padding:
+                                                            "14px",
+                                                        background:
+                                                            "#f0fdf4",
+                                                        border:
+                                                            "1px solid #d1fae5",
+                                                        borderRadius:
+                                                            "10px",
+                                                    }}
+                                                >
+                                                    <p
                                                         style={{
-                                                            marginTop:
-                                                                "18px",
-
-                                                            padding:
-                                                                "14px",
-
-                                                            border:
-                                                                "1px solid #d1fae5",
-
-                                                            borderRadius:
-                                                                "10px",
-
-                                                            background:
-                                                                "#f0fdf4",
+                                                            margin:
+                                                                "0 0 6px",
+                                                            fontWeight:
+                                                                "700",
                                                         }}
                                                     >
-                                                        <p
-                                                            style={{
-                                                                margin:
-                                                                    "0 0 5px",
+                                                        Claim
+                                                        accepted
+                                                    </p>
 
-                                                                fontWeight:
-                                                                    600,
-                                                            }}
-                                                        >
-                                                            Claim
-                                                            accepted
-                                                        </p>
+                                                    <p
+                                                        style={{
+                                                            margin:
+                                                                "0 0 12px",
+                                                            fontSize:
+                                                                "0.9rem",
+                                                        }}
+                                                    >
+                                                        You can now
+                                                        contact{" "}
+                                                        {claim.claimant_name ||
+                                                            "the claimant"}{" "}
+                                                        by email.
+                                                    </p>
 
-                                                        <p
-                                                            style={{
-                                                                margin:
-                                                                    "0 0 12px",
-                                                            }}
-                                                        >
-                                                            You can
-                                                            now contact{" "}
-                                                            {
-                                                                claim.claimant_name
-                                                            }{" "}
-                                                            by email.
-                                                        </p>
-
-                                                        <a
-                                                            href={getMailLink(
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-primary"
+                                                        onClick={() =>
+                                                            openGmail(
                                                                 claim.claimant_email,
-                                                                claim.item_title
-                                                            )}
-                                                            className="btn btn-primary"
-                                                        >
-                                                            Contact
-                                                            by Email
-                                                        </a>
-                                                    </div>
-                                                )}
+                                                                claim.item_title ||
+                                                                    "Item"
+                                                            )
+                                                        }
+                                                    >
+                                                        Contact
+                                                        Claimant by
+                                                        Email
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div
                                             style={{
                                                 display:
                                                     "flex",
-
                                                 gap:
                                                     "8px",
-
                                                 flexWrap:
                                                     "wrap",
                                             }}
@@ -485,8 +530,7 @@ function ClaimsReceived() {
                                                     to={`/items/${claim.item_id}`}
                                                     className="btn btn-secondary"
                                                 >
-                                                    View
-                                                    Item
+                                                    View Item
                                                 </Link>
                                             )}
 

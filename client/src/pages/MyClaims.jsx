@@ -23,29 +23,33 @@ function MyClaims() {
     const extractClaims = (
         data
     ) => {
-        if (Array.isArray(data))
+        if (Array.isArray(data)) {
             return data;
+        }
 
         if (
             Array.isArray(
-                data.claims
+                data?.claims
             )
-        )
+        ) {
             return data.claims;
+        }
 
         if (
             Array.isArray(
-                data.data
+                data?.data
             )
-        )
+        ) {
             return data.data;
+        }
 
         if (
             Array.isArray(
-                data.data?.claims
+                data?.data?.claims
             )
-        )
+        ) {
             return data.data.claims;
+        }
 
         return [];
     };
@@ -53,7 +57,9 @@ function MyClaims() {
     const getImageUrl = (
         image
     ) => {
-        if (!image) return "";
+        if (!image) {
+            return "";
+        }
 
         if (
             image.startsWith(
@@ -100,6 +106,11 @@ function MyClaims() {
                     )
                 );
             } catch (error) {
+                console.error(
+                    "Load claims error:",
+                    error
+                );
+
                 setError(
                     error.message
                 );
@@ -116,11 +127,12 @@ function MyClaims() {
         async (claimId) => {
             const confirmed =
                 window.confirm(
-                    "Cancel this claim?"
+                    "Are you sure you want to cancel this claim?"
                 );
 
-            if (!confirmed)
+            if (!confirmed) {
                 return;
+            }
 
             try {
                 setError("");
@@ -149,16 +161,29 @@ function MyClaims() {
 
                 await loadClaims();
             } catch (error) {
+                console.error(
+                    "Cancel claim error:",
+                    error
+                );
+
                 setError(
                     error.message
                 );
             }
         };
 
-    const getMailLink = (
+    const openGmail = (
         email,
         itemTitle
     ) => {
+        if (!email) {
+            setError(
+                "Owner email is not available."
+            );
+
+            return;
+        }
+
         const subject =
             encodeURIComponent(
                 `Lost & Found - ${itemTitle}`
@@ -169,7 +194,13 @@ function MyClaims() {
                 `Hi,\n\nI'm contacting you regarding my accepted claim for "${itemTitle}".\n\n`
             );
 
-        return `mailto:${email}?subject=${subject}&body=${body}`;
+        const gmailUrl =
+            `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(
+                email
+            )}&su=${subject}&body=${body}`;
+
+        window.location.href =
+            gmailUrl;
     };
 
     return (
@@ -206,12 +237,9 @@ function MyClaims() {
                         </h3>
 
                         <p>
-                            Browse items
-                            and submit a
-                            claim if you
-                            find something
-                            that belongs to
-                            you.
+                            Claims you
+                            submit will
+                            appear here.
                         </p>
 
                         <Link
@@ -299,7 +327,6 @@ function MyClaims() {
                                                     style={{
                                                         marginTop:
                                                             "10px",
-
                                                         color:
                                                             "#6b7280",
                                                     }}
@@ -313,70 +340,64 @@ function MyClaims() {
                                             )}
 
                                             {claim.status ===
-                                                "ACCEPTED" &&
-                                                claim.owner_email && (
-                                                    <div
+                                                "ACCEPTED" && (
+                                                <div
+                                                    style={{
+                                                        marginTop:
+                                                            "15px",
+                                                        padding:
+                                                            "14px",
+                                                        background:
+                                                            "#f0fdf4",
+                                                        border:
+                                                            "1px solid #d1fae5",
+                                                        borderRadius:
+                                                            "10px",
+                                                    }}
+                                                >
+                                                    <p
                                                         style={{
-                                                            marginTop:
-                                                                "15px",
-
-                                                            padding:
-                                                                "12px",
-
-                                                            borderRadius:
-                                                                "10px",
-
-                                                            background:
-                                                                "#f0fdf4",
-
-                                                            border:
-                                                                "1px solid #d1fae5",
+                                                            margin:
+                                                                "0 0 6px",
+                                                            fontWeight:
+                                                                "700",
                                                         }}
                                                     >
-                                                        <p
-                                                            style={{
-                                                                margin:
-                                                                    "0 0 5px",
+                                                        Claim
+                                                        accepted
+                                                    </p>
 
-                                                                fontWeight:
-                                                                    600,
-                                                            }}
-                                                        >
-                                                            Your
-                                                            claim was
-                                                            accepted!
-                                                        </p>
+                                                    <p
+                                                        style={{
+                                                            margin:
+                                                                "0 0 12px",
+                                                            fontSize:
+                                                                "0.9rem",
+                                                        }}
+                                                    >
+                                                        You can now
+                                                        contact{" "}
+                                                        {claim.owner_name ||
+                                                            "the owner"}{" "}
+                                                        by email.
+                                                    </p>
 
-                                                        <p
-                                                            style={{
-                                                                margin:
-                                                                    "0 0 10px",
-
-                                                                fontSize:
-                                                                    "0.9rem",
-                                                            }}
-                                                        >
-                                                            You can
-                                                            now
-                                                            contact{" "}
-                                                            {claim.owner_name ||
-                                                                "the owner"}{" "}
-                                                            by email.
-                                                        </p>
-
-                                                        <a
-                                                            href={getMailLink(
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-primary"
+                                                        onClick={() =>
+                                                            openGmail(
                                                                 claim.owner_email,
-                                                                claim.item_title
-                                                            )}
-                                                            className="btn btn-primary"
-                                                        >
-                                                            Contact
-                                                            Owner by
-                                                            Email
-                                                        </a>
-                                                    </div>
-                                                )}
+                                                                claim.item_title ||
+                                                                    "Item"
+                                                            )
+                                                        }
+                                                    >
+                                                        Contact Owner
+                                                        by Email
+                                                    </button>
+                                                </div>
+                                            )}
 
                                             {claim.status ===
                                                 "REJECTED" && (
@@ -387,8 +408,25 @@ function MyClaims() {
                                                             "12px",
                                                     }}
                                                 >
-                                                    This claim
-                                                    was rejected.
+                                                    This claim was
+                                                    rejected.
+                                                </div>
+                                            )}
+
+                                            {claim.status ===
+                                                "CANCELLED" && (
+                                                <div
+                                                    style={{
+                                                        marginTop:
+                                                            "12px",
+                                                        color:
+                                                            "#6b7280",
+                                                        fontSize:
+                                                            "0.9rem",
+                                                    }}
+                                                >
+                                                    You cancelled
+                                                    this claim.
                                                 </div>
                                             )}
 
@@ -396,9 +434,9 @@ function MyClaims() {
                                                 {claim.item_id && (
                                                     <Link
                                                         to={`/items/${claim.item_id}`}
+                                                        className="btn btn-secondary"
                                                     >
-                                                        View
-                                                        Item
+                                                        View Item
                                                     </Link>
                                                 )}
 
