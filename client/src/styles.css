@@ -1980,3 +1980,19 @@ textarea.form-control {
 .navbar-logout-btn:active {
     background: #b91c1c;
 }
+.navbar-logout-btn {
+    background: #111827;
+    color: #ffffff;
+    border-color: #111827;
+    font-weight: 700;
+}
+
+.navbar-logout-btn:hover {
+    background: #000000;
+    color: #ffffff;
+    border-color: #000000;
+}
+
+.navbar-logout-btn:active {
+    background: #000000;
+}
