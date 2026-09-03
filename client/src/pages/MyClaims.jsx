@@ -1,5 +1,11 @@
-import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import {
+    useEffect,
+    useState,
+} from "react";
+
+import {
+    Link,
+} from "react-router-dom";
 
 import Navbar from "../components/Navbar";
 import API_URL from "../config/api";
@@ -14,11 +20,32 @@ function MyClaims() {
     const [error, setError] =
         useState("");
 
-    const extractClaims = (data) => {
-        if (Array.isArray(data)) return data;
-        if (Array.isArray(data.claims)) return data.claims;
-        if (Array.isArray(data.data)) return data.data;
-        if (Array.isArray(data.data?.claims)) return data.data.claims;
+    const extractClaims = (
+        data
+    ) => {
+        if (Array.isArray(data))
+            return data;
+
+        if (
+            Array.isArray(
+                data.claims
+            )
+        )
+            return data.claims;
+
+        if (
+            Array.isArray(
+                data.data
+            )
+        )
+            return data.data;
+
+        if (
+            Array.isArray(
+                data.data?.claims
+            )
+        )
+            return data.data.claims;
 
         return [];
     };
@@ -42,81 +69,107 @@ function MyClaims() {
         return `${API_URL}${image}`;
     };
 
-    const loadClaims = async () => {
-        try {
-            setLoading(true);
-            setError("");
+    const loadClaims =
+        async () => {
+            try {
+                setLoading(true);
+                setError("");
 
-            const response =
-                await fetch(
-                    `${API_URL}/api/claims/mine`,
-                    {
-                        credentials:
-                            "include",
-                    }
+                const response =
+                    await fetch(
+                        `${API_URL}/api/claims/mine`,
+                        {
+                            credentials:
+                                "include",
+                        }
+                    );
+
+                const data =
+                    await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message ||
+                            "Unable to load claims"
+                    );
+                }
+
+                setClaims(
+                    extractClaims(
+                        data
+                    )
                 );
-
-            const data =
-                await response.json();
-
-            if (!response.ok) {
-                throw new Error(
-                    data.message ||
-                        "Unable to load claims"
+            } catch (error) {
+                setError(
+                    error.message
                 );
+            } finally {
+                setLoading(false);
             }
-
-            setClaims(
-                extractClaims(data)
-            );
-        } catch (error) {
-            setError(error.message);
-        } finally {
-            setLoading(false);
-        }
-    };
+        };
 
     useEffect(() => {
         loadClaims();
     }, []);
 
-    const cancelClaim = async (
-        claimId
-    ) => {
-        const confirmed =
-            window.confirm(
-                "Cancel this claim?"
-            );
-
-        if (!confirmed) return;
-
-        try {
-            setError("");
-
-            const response =
-                await fetch(
-                    `${API_URL}/api/claims/${claimId}/cancel`,
-                    {
-                        method: "PATCH",
-                        credentials:
-                            "include",
-                    }
+    const cancelClaim =
+        async (claimId) => {
+            const confirmed =
+                window.confirm(
+                    "Cancel this claim?"
                 );
 
-            const data =
-                await response.json();
+            if (!confirmed)
+                return;
 
-            if (!response.ok) {
-                throw new Error(
-                    data.message ||
-                        "Unable to cancel claim"
+            try {
+                setError("");
+
+                const response =
+                    await fetch(
+                        `${API_URL}/api/claims/${claimId}/cancel`,
+                        {
+                            method:
+                                "PATCH",
+
+                            credentials:
+                                "include",
+                        }
+                    );
+
+                const data =
+                    await response.json();
+
+                if (!response.ok) {
+                    throw new Error(
+                        data.message ||
+                            "Unable to cancel claim"
+                    );
+                }
+
+                await loadClaims();
+            } catch (error) {
+                setError(
+                    error.message
                 );
             }
+        };
 
-            await loadClaims();
-        } catch (error) {
-            setError(error.message);
-        }
+    const getMailLink = (
+        email,
+        itemTitle
+    ) => {
+        const subject =
+            encodeURIComponent(
+                `Lost & Found - ${itemTitle}`
+            );
+
+        const body =
+            encodeURIComponent(
+                `Hi,\n\nI'm contacting you regarding my accepted claim for "${itemTitle}".\n\n`
+            );
+
+        return `mailto:${email}?subject=${subject}&body=${body}`;
     };
 
     return (
@@ -125,11 +178,13 @@ function MyClaims() {
 
             <main className="page-shell">
                 <div className="page-header">
-                    <h1>My Claims</h1>
+                    <h1>
+                        My Claims
+                    </h1>
 
                     <p>
-                        Track the claims you have
-                        submitted.
+                        Track the claims
+                        you have submitted.
                     </p>
                 </div>
 
@@ -151,10 +206,12 @@ function MyClaims() {
                         </h3>
 
                         <p>
-                            Browse items and submit
-                            a claim if you find
-                            something that belongs
-                            to you.
+                            Browse items
+                            and submit a
+                            claim if you
+                            find something
+                            that belongs to
+                            you.
                         </p>
 
                         <Link
@@ -228,7 +285,6 @@ function MyClaims() {
 
                                             <h3>
                                                 {claim.item_title ||
-                                                    claim.title ||
                                                     "Item"}
                                             </h3>
 
@@ -237,6 +293,104 @@ function MyClaims() {
                                                     claim.message
                                                 }
                                             </p>
+
+                                            {claim.owner_response && (
+                                                <p
+                                                    style={{
+                                                        marginTop:
+                                                            "10px",
+
+                                                        color:
+                                                            "#6b7280",
+                                                    }}
+                                                >
+                                                    Owner
+                                                    response:{" "}
+                                                    {
+                                                        claim.owner_response
+                                                    }
+                                                </p>
+                                            )}
+
+                                            {claim.status ===
+                                                "ACCEPTED" &&
+                                                claim.owner_email && (
+                                                    <div
+                                                        style={{
+                                                            marginTop:
+                                                                "15px",
+
+                                                            padding:
+                                                                "12px",
+
+                                                            borderRadius:
+                                                                "10px",
+
+                                                            background:
+                                                                "#f0fdf4",
+
+                                                            border:
+                                                                "1px solid #d1fae5",
+                                                        }}
+                                                    >
+                                                        <p
+                                                            style={{
+                                                                margin:
+                                                                    "0 0 5px",
+
+                                                                fontWeight:
+                                                                    600,
+                                                            }}
+                                                        >
+                                                            Your
+                                                            claim was
+                                                            accepted!
+                                                        </p>
+
+                                                        <p
+                                                            style={{
+                                                                margin:
+                                                                    "0 0 10px",
+
+                                                                fontSize:
+                                                                    "0.9rem",
+                                                            }}
+                                                        >
+                                                            You can
+                                                            now
+                                                            contact{" "}
+                                                            {claim.owner_name ||
+                                                                "the owner"}{" "}
+                                                            by email.
+                                                        </p>
+
+                                                        <a
+                                                            href={getMailLink(
+                                                                claim.owner_email,
+                                                                claim.item_title
+                                                            )}
+                                                            className="btn btn-primary"
+                                                        >
+                                                            Contact
+                                                            Owner by
+                                                            Email
+                                                        </a>
+                                                    </div>
+                                                )}
+
+                                            {claim.status ===
+                                                "REJECTED" && (
+                                                <div
+                                                    className="alert alert-error"
+                                                    style={{
+                                                        marginTop:
+                                                            "12px",
+                                                    }}
+                                                >
+                                                    This claim
+                                                    was rejected.
+                                                </div>
+                                            )}
 
                                             <div className="item-card-footer">
                                                 {claim.item_id && (
